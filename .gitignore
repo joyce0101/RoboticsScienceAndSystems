@@ -1,0 +1,28 @@
+# Local PlatformIO configuration, build output, and generated scaffolding
+/platformio.ini
+/.pio/
+/.vscode/
+/include/
+/lib/
+/test/
+/tests/
+
+# Local project and experiment notes
+/Arc_Path_Experiment_R600mm.md
+/Path_Reproduction_Project_Analysis.md
+/Project_Structure_And_Startup_Analysis.md
+
+# Local editor history
+/.history/
+
+# Local logs, generated output, and documentation
+/log/
+/logs/
+/output/
+/docs/
+/Path_Reproduction_Experiment_Design.md
+/SEMTM0043_42_IndividualTechReport/
+/SEMTM0043_42_IndividualTechReport_*.md
+/motor练习总结.md
+/Coordinate_Grid_*.pdf
+/generate_grid_pdf.py

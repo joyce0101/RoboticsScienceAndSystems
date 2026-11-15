@@ -14,11 +14,15 @@ RobotWifiAP_c server("myAP", "myPassword", 80);
 Robot_c robot;
 /** @brief Direct interface to the 3Pi+ accelerometer, gyro, and magnetometer. */
 RobotIMU_c imu;
-/** @brief Supplied nominal line-following controller. */
+
+// 动作参数和顺序在Controller_c::updateMotion()中，通过runArc()直接调用。
+// 按实测拟合公式|PWM|=(|v|+28.861902)/3.722106换算；实测轮速仅用于观测。
+// 原圆弧内轮目标66 mm/s映射到PWM25，会被下述死区保护拒绝执行。
+// 死区PWM30单独检查，非零目标映射到|PWM|<=30时拒绝配置。
 Controller_c controller;
 
 
-/** @brief Initialises serial, WiFi, IMU, and the supplied robot-controller baseline. */
+/** @brief Initialises serial, WiFi, IMU, and the robot hardware before button start. */
 void setup() {
 
   Serial.begin(115200);
@@ -26,6 +30,7 @@ void setup() {
 
   robot.initialise();
 //  robot.initialise("team name");
+
 
 
   // Robot_c starts the shared I2C bus before RobotIMU_c uses it. IMU readings
@@ -38,15 +43,8 @@ void setup() {
 }
 
 
-/** @brief Maintains telemetry transport and runs the controller repeatedly. */
+/** @brief 按键启动Controller中的动作序列；每段完成后停车观察2秒。 */
 void loop() {
-  // Accept or maintain the optional Processing telemetry connection. The
-  // controller continues to run even when no client is connected.
   server.update();
-
-  
-  // Run an iteration of the robot controller code.
-  // Develop controller routines in Controller.cpp; edit parameters in Controller.h.
   controller.update(robot, server);
-
 }
