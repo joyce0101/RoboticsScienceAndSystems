@@ -15,10 +15,7 @@ Robot_c robot;
 /** @brief Direct interface to the 3Pi+ accelerometer, gyro, and magnetometer. */
 RobotIMU_c imu;
 
-// 动作参数和顺序在Controller_c::updateMotion()中，通过runArc()直接调用。
-// 按实测拟合公式|PWM|=(|v|+28.861902)/3.722106换算；实测轮速仅用于观测。
-// 原圆弧内轮目标66 mm/s映射到PWM25，会被下述死区保护拒绝执行。
-// 死区PWM30单独检查，非零目标映射到|PWM|<=30时拒绝配置。
+// Select the individual motor experiment in Controller_c::update().
 Controller_c controller;
 
 
@@ -43,7 +40,7 @@ void setup() {
 }
 
 
-/** @brief 按键启动Controller中的动作序列；每段完成后停车观察2秒。 */
+/** @brief Maintains telemetry and runs the button-started motor experiment. */
 void loop() {
   server.update();
   controller.update(robot, server);

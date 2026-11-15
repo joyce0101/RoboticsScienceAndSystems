@@ -7,7 +7,7 @@
 #include "OdometryModel.h"
 
 /**
- * @brief Runs the button-started motion sequence and shared motor/sensor tools.
+ * @brief Runs button-started motor experiments and encoder speed measurement.
  *
  * Controller_c owns the controller state, while Robot_c owns the latest hardware
  * snapshot and RobotWifiAP_c owns optional telemetry transport. Students may read
@@ -87,40 +87,8 @@ unsigned long deadband_run_start_ms;
     /** @brief Creates a controller in its waiting state. */
     Controller_c();
 
-    enum class ExperimentPhase { WAITING, RUNNING, SETTLING, DONE, FAULT };
-    ExperimentPhase getExperimentPhase() const;
-    static const uint32_t ENCODER_TIMEOUT_MS = 300;
-
-    // 纯计算：半径mm、转角rad、中心速度mm/s、轮距mm -> 左右轮速和时长。
-    // 无效参数不修改输出；PWM可执行范围另外由speedToPwm检查。
-    static bool calculateArcMotion(float radiusMm, float angleRad,
-                                   float centreSpeedMmPerSec, float wheelSeparationMm,
-                                   float& leftSpeed, float& rightSpeed, uint32_t& durationMs);
-
-    // 空载左轮正向PWM40～200拟合：v = 3.722106*PWM - 28.861902 (mm/s)。
-    // 右轮/反向暂共用幅值模型，尚未独立标定；截距不是PWM死区。
-    static constexpr float PWM_SPEED_GAIN = 3.722106f;
-    static constexpr float PWM_SPEED_INTERCEPT = -28.861902f;
-    // 独立于速度截距：非零目标映射后的PWM幅值必须超过30。
-    static const int16_t PWM_DEADBAND = 30;
-    static const int16_t MAX_PWM = 200;
-
-    /** @brief Convert mm/s to signed PWM using the shared motor model.
-     * @return False for non-finite/out-of-range speeds or nonzero commands in
-     * the deadband. On failure pwm is unchanged. This sends no motor command.
-     */
-    static bool speedToPwm(float speedMmPerSec, int16_t& pwm);
-
-    /** @brief Validate both target speeds, then send one complete motor command.
-     * @return False for invalid speeds or a failed motor write. Invalid speeds
-     * send no command; the caller must handle failure and stopping explicitly.
-     */
-    static bool setWheelSpeeds(Robot_c& robot, float leftSpeedMmPerSec,
-                               float rightSpeedMmPerSec);
-
     /** @brief Clears signal and mode state, returning the controller to waiting.
-     * @note Task timers and odometry are retained. An active action is retained;
-     * idle, completed or faulted motion is rearmed to the first step.
+     * @note Task timers and odometry are retained; motor experiments are rearmed.
      * It sends no motor command: returning to waiting does not stop the motors.
      * Send robot.setMotorPWM(0, 0) separately and check the command result.
      */
@@ -135,7 +103,7 @@ unsigned long deadband_run_start_ms;
     /**
      * @brief Starts the controller or resets it to waiting.
      * @param requested_signal Zero resets to waiting without sending a motor stop;
-     * a non-zero value starts motion only if the current signal is zero.
+     * a non-zero value starts the selected experiment if the signal is zero.
      * @note The signal remains one after a line-search timeout. Reset to zero
      * before requesting another start; a repeated non-zero value has no effect.
      */
@@ -151,12 +119,6 @@ unsigned long deadband_run_start_ms;
      * returns early between update intervals.
      */
     void update(Robot_c &robot, RobotWifiAP_c &server);
-    protected:
-    /** 每周期调用当前动作方法，完成后推进下一步。 */
-    virtual void updateMotion(Robot_c &robot, unsigned long now);
-    // 在updateMotion中使用，读取update()本周期已采集的编码器有效标志。
-    ExperimentPhase runArc(Robot_c& robot, uint32_t nowMs,
-                           float radiusMm, float angleRad, float centreSpeedMmPerSec);
 
   private:
     /** @brief Internal modes used by the nominal line-following demonstration. */
@@ -174,17 +136,6 @@ unsigned long deadband_run_start_ms;
     TaskTimer_c ramp_timer;   // 控制pwm更新时间
     unsigned long recovery_start_ms;
 
-
-    // 每个枚举值是路线中的一个具体动作，同类型动作也各占一步。
-    enum class MotionStep { ARC_1, STRAIGHT_1};
-    MotionStep motionStep = MotionStep::ARC_1;
-    ExperimentPhase experimentPhase = ExperimentPhase::WAITING;
-    uint32_t motionStartMs = 0;
-    uint32_t settlingStartMs = 0;
-    uint32_t lastEncoderMs = 0;
-    bool motionBaselineInitialized = false;
-    bool encoder_sample_updated = false;
-    bool stopMotion(Robot_c& robot);
 
     /** @brief Returns whether cached DN3 is at or above LINE_THRESHOLD. */
     bool lineDetected(const Robot_c &robot) const;
