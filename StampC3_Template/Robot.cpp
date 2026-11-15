@@ -285,10 +285,13 @@ bool Robot_c::setupLED() {
   LED_rOffset = (0x12 >> 4) & 0x03;
   LED_gOffset = (0x12 >> 2) & 0x03;
   LED_bOffset = 0x12 & 0x03;
-  rmt_reserve_memsize_t rmt_mem = RMT_MEM_NUM_BLOCKS_1;
-  if (rmtInit(2, RMT_TX_MODE, rmt_mem, 10000000) == false) {
+  rmt_reserve_memsize_t rmt_mem = RMT_MEM_64;
+  led_rmt = rmtInit(2, RMT_TX_MODE, rmt_mem);
+  if (led_rmt == nullptr) {
     return false;
   }
+  // A 100 ns tick gives the LED's 0.4/0.8 us pulse durations below.
+  rmtSetTick(led_rmt, 100);
 
   for (int i = 0; i < 24; i++) {
     led_data[i].level0 = 1;
@@ -302,5 +305,6 @@ bool Robot_c::setupLED() {
 }
 
 esp_err_t Robot_c::updateLED() {
-  return rmtWrite(2, led_data, 24, RMT_WAIT_FOR_EVER);
+  if (led_rmt == nullptr) return ESP_ERR_INVALID_STATE;
+  return rmtWriteBlocking(led_rmt, led_data, 24) ? ESP_OK : ESP_FAIL;
 }

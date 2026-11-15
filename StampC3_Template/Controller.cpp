@@ -1,4 +1,6 @@
 #include "Controller.h"
+#include <math.h>
+#include <float.h>
 
 const unsigned long Controller_c::UPDATE_INTERVAL_MS;
 const unsigned long Controller_c::TELEMETRY_INTERVAL_MS;
@@ -8,6 +10,11 @@ constexpr float Controller_c::BASE_PWM;
 constexpr float Controller_c::LINE_FOLLOW_GAIN;
 constexpr float Controller_c::RECOVERY_LEFT_PWM;
 constexpr float Controller_c::RECOVERY_RIGHT_PWM;
+constexpr float Controller_c::PWM_SPEED_GAIN;
+constexpr float Controller_c::PWM_SPEED_INTERCEPT;
+const int16_t Controller_c::PWM_DEADBAND;
+const int16_t Controller_c::MAX_PWM;
+const uint32_t Controller_c::ENCODER_TIMEOUT_MS;
 
 Controller_c::Controller_c()
   : update_timer(UPDATE_INTERVAL_MS),
@@ -16,9 +23,25 @@ Controller_c::Controller_c()
 }
 
 void Controller_c::reset() {
+  const bool actionActive = experimentPhase == ExperimentPhase::RUNNING ||
+                            experimentPhase == ExperimentPhase::SETTLING;
   signal = 0;
   mode = WAITING;
   recovery_start_ms = 0;
+  // Measuring Wheel Speed: Encoders
+  last_time_ms = 0;
+  last_count_left = 0;
+  last_count_right = 0;
+  speed_left = 0.0f;
+  speed_right = 0.0f;
+  speed_initialised = false;
+  encoder_sample_updated = false;
+  if (!actionActive) {
+    motionStep = MotionStep::ARC_1;
+    experimentPhase = ExperimentPhase::WAITING;
+    motionStartMs = settlingStartMs = lastEncoderMs = 0;
+    motionBaselineInitialized = false;
+  }
 
 }
 
@@ -65,15 +88,18 @@ void Controller_c::update(Robot_c &robot, RobotWifiAP_c &server) {
 
   // Ask the robot for the latest encoder information, and then use this
   // to update the odometry on board the StampC3 (see OdometryModel.h).
-  if (robot.getEncoders()) {
+  encoder_sample_updated = robot.getEncoders();
+  if (encoder_sample_updated) {
+    const unsigned long sample_time_ms = robot.getMillis();
     odometry.update(robot.getLeftEncoderCount(), robot.getRightEncoderCount());
+    measureWheelSpeed(robot, sample_time_ms);
   }
 
   // Pose estimation from the Pololu 3Pi robot itself.
   robot.getPose();
 
-  // While waiting, a button press sets signal to 1 and starts the physical
-  // robot's line follower, even without Processing connected. The transmitted
+  // While waiting, a button press sets signal to 1 and starts the configured
+  // physical behaviour, even without Processing connected. The transmitted
   // signal also starts an armed Digital Twin live comparison. This is a start
   // control, not a start/stop toggle; further presses are ignored while signal is 1.
   if (signal == 0) {
@@ -82,10 +108,21 @@ void Controller_c::update(Robot_c &robot, RobotWifiAP_c &server) {
     }
   }
 
-  // The user has started the demonstration, so we run the line following
-  // controller code.
+  // Dispatch the configured motion after the start signal.
   if (signal == 1) {
-    runLineFollower(robot, now);
+    if (!motionBaselineInitialized && experimentPhase == ExperimentPhase::WAITING &&
+        encoder_sample_updated) {
+      // 整个动作序列仅在这里建立一次基线，动作切换不清零位姿。
+      odometry.reset();
+      odometry.update(robot.getLeftEncoderCount(), robot.getRightEncoderCount());
+      last_count_left = robot.getLeftEncoderCount();
+      last_count_right = robot.getRightEncoderCount();
+      last_time_ms = now;
+      speed_left = speed_right = 0.0f;
+      speed_initialised = true;
+      motionBaselineInitialized = true;
+    }
+    updateMotion(robot, now);
 
   }
 
@@ -96,6 +133,10 @@ void Controller_c::update(Robot_c &robot, RobotWifiAP_c &server) {
     publishTelemetry(robot, server, now);
 
   }
+}
+
+Controller_c::ExperimentPhase Controller_c::getExperimentPhase() const {
+  return experimentPhase;
 }
 
 bool Controller_c::lineDetected(const Robot_c &robot) const {
@@ -175,4 +216,167 @@ void Controller_c::publishTelemetry(Robot_c &robot, RobotWifiAP_c &server, unsig
       signal
     );
   }
+}
+
+void Controller_c::updateMotion(Robot_c &robot, unsigned long now) {
+  // 完成/故障由执行状态表示；motionStep只选择当前的具体动作。
+  if (experimentPhase == ExperimentPhase::DONE || experimentPhase == ExperimentPhase::FAULT) {
+    stopMotion(robot);
+    return;
+  }
+  switch (motionStep) {
+    case MotionStep::ARC_1:
+      if (runArc(robot, uint32_t(now), 200.0f, -float(TWO_PI) / 4.0f, 180.0f)
+          == ExperimentPhase::DONE) {
+        // 当前直线未实现，保持已有路线；接入后可改为STRAIGHT_1。
+        // motionStep = MotionStep::ARC_2;
+        // experimentPhase = ExperimentPhase::WAITING;
+      }
+      break;
+    case MotionStep::STRAIGHT_1:
+      // 该步尚未实现：不能跳过它，也不能提前执行后面的圆弧。
+      // 实现runStraight后，在完成时切换至ARC_2并将阶段置回WAITING。
+      experimentPhase = ExperimentPhase::FAULT;
+      stopMotion(robot);
+      return;
+    // case MotionStep::ARC_2:
+    //   runArc(robot, uint32_t(now), 100.0f, -float(TWO_PI) / 4.0f, 180.0f);
+    //   break;
+  }
+}
+
+void Controller_c::measureWheelSpeed(Robot_c &robot, unsigned long now) {
+
+  const int32_t count_left = robot.getLeftEncoderCount();
+  const int32_t count_right = robot.getRightEncoderCount();
+
+  // 第一次成功采集：只保存基准，不计算速度。
+  if (!speed_initialised) {
+    last_count_left = count_left;
+    last_count_right = count_right;
+    last_time_ms = now;
+    speed_initialised = true;
+    return;
+  }
+
+  const uint32_t dt_ms = uint32_t(now) - uint32_t(last_time_ms);
+
+  if (dt_ms < 100) {
+    return;
+  }
+
+  // 用更宽的类型计算差值，避免普通有符号减法溢出。
+  int64_t delta_left =
+      (int64_t)count_left - (int64_t)last_count_left;
+  int64_t delta_right =
+      (int64_t)count_right - (int64_t)last_count_right;
+  // 编码器跨过32位有符号边界时仍保留正确的小增量。
+  const int64_t counter_range = int64_t(1) << 32;
+  if (delta_left > INT32_MAX) delta_left -= counter_range;
+  if (delta_left < INT32_MIN) delta_left += counter_range;
+  if (delta_right > INT32_MAX) delta_right -= counter_range;
+  if (delta_right < INT32_MIN) delta_right += counter_range;
+
+  // Share the odometry model's geometry; use each wheel's own radius.
+  const float radians_per_count = TWO_PI / odometry.encoderCountsPerRevolution;
+  const float counts_per_second_scale = 1000.0f / (float)dt_ms;
+  speed_left = (float)delta_left * radians_per_count
+      * odometry.leftWheelRadiusMm * counts_per_second_scale;
+  speed_right = (float)delta_right * radians_per_count
+      * odometry.rightWheelRadiusMm * counts_per_second_scale;
+
+  // 时间与计数必须一起更新。
+  last_count_left = count_left;
+  last_count_right = count_right;
+  last_time_ms = now;
+}
+bool Controller_c::calculateArcMotion(
+    float radiusMm, float angleRad, float centreSpeedMmPerSec, float wheelSeparationMm,
+    float& leftSpeed, float& rightSpeed, uint32_t& durationMs) {
+  if (!isfinite(radiusMm) || radiusMm <= 0 || !isfinite(angleRad) || angleRad == 0 ||
+      !isfinite(centreSpeedMmPerSec) || centreSpeedMmPerSec <= 0 ||
+      !isfinite(wheelSeparationMm) || wheelSeparationMm <= 0) return false;
+  const double ratio = copysign(double(wheelSeparationMm) / (2.0 * radiusMm), double(angleRad));
+  const double left = centreSpeedMmPerSec * (1.0 - ratio);
+  const double right = centreSpeedMmPerSec * (1.0 + ratio);
+  const double duration = floor(fabs(double(angleRad)) * radiusMm
+                                / centreSpeedMmPerSec * 1000.0 + 0.5);
+  if (!isfinite(left) || !isfinite(right) || fabs(left) > FLT_MAX || fabs(right) > FLT_MAX ||
+      !isfinite(duration) || duration < 1 || duration > 2147483647.0) return false;
+  leftSpeed = float(left);
+  rightSpeed = float(right);
+  durationMs = uint32_t(duration);
+  return true;
+}
+
+bool Controller_c::stopMotion(Robot_c& robot) {
+  if (robot.setMotorPWM(0, 0)) return true;
+  experimentPhase = ExperimentPhase::FAULT;
+  return robot.setMotorPWM(0, 0);
+}
+
+Controller_c::ExperimentPhase Controller_c::runArc(
+    Robot_c& robot, uint32_t nowMs, float radiusMm, float angleRad, float centreSpeedMmPerSec) {
+  float leftSpeed = 0, rightSpeed = 0;
+  uint32_t durationMs = 0;
+  if (experimentPhase == ExperimentPhase::WAITING || experimentPhase == ExperimentPhase::RUNNING) {
+    int16_t leftPwm, rightPwm;
+    if (!calculateArcMotion(radiusMm, angleRad, centreSpeedMmPerSec, odometry.wheelSeparationMm,
+                            leftSpeed, rightSpeed, durationMs) ||
+        !speedToPwm(leftSpeed, leftPwm) || !speedToPwm(rightSpeed, rightPwm)) {
+      experimentPhase = ExperimentPhase::FAULT;
+    }
+  }
+  if (experimentPhase == ExperimentPhase::WAITING) {
+    if (!encoder_sample_updated) {
+      experimentPhase = ExperimentPhase::FAULT;
+    } else {
+      motionStartMs = lastEncoderMs = nowMs;
+      experimentPhase = ExperimentPhase::RUNNING;
+    }
+  }
+  if (experimentPhase == ExperimentPhase::RUNNING) {
+    if (uint32_t(nowMs - motionStartMs) >= durationMs) {
+      experimentPhase = ExperimentPhase::SETTLING;
+      settlingStartMs = nowMs;
+    } else if (uint32_t(nowMs - lastEncoderMs) > ENCODER_TIMEOUT_MS) {
+      experimentPhase = ExperimentPhase::FAULT;
+    } else {
+      if (encoder_sample_updated) lastEncoderMs = nowMs;
+      if (!setWheelSpeeds(robot, leftSpeed, rightSpeed)) experimentPhase = ExperimentPhase::FAULT;
+    }
+  }
+  if (experimentPhase != ExperimentPhase::RUNNING) {
+    if (!stopMotion(robot)) return experimentPhase;
+    if (experimentPhase == ExperimentPhase::SETTLING &&
+        uint32_t(nowMs - settlingStartMs) >= 2000UL) experimentPhase = ExperimentPhase::DONE;
+  }
+  return experimentPhase;
+}
+
+// 公共电机工具：供圆弧、直线和其他运动控制复用。
+bool Controller_c::speedToPwm(float speedMmPerSec, int16_t& pwm) {
+  if (!isfinite(speedMmPerSec)) return false;
+  if (speedMmPerSec == 0) { pwm = 0; return true; }
+  // Match the float input's representable endpoint at PWM 200.
+  const float maximum = float(double(PWM_SPEED_GAIN) * MAX_PWM + PWM_SPEED_INTERCEPT);
+  if (fabs(double(speedMmPerSec)) > maximum) return false;
+  // |PWM| = (|v| + 28.861902) / 3.722106; reverse shares the magnitude model.
+  // No additional deadband offset. Only absorb rounding at the float endpoint.
+  const double magnitude = fmin(double(MAX_PWM),
+      (fabs(double(speedMmPerSec)) - PWM_SPEED_INTERCEPT) / PWM_SPEED_GAIN);
+  if (!isfinite(magnitude)) return false;
+  const int16_t rounded = int16_t(floor(magnitude + 0.5));
+  // 不抬高PWM改变圆弧比例；低于可用驱动范围时拒绝执行。
+  if (rounded <= PWM_DEADBAND) return false;
+  pwm = speedMmPerSec > 0 ? rounded : -rounded;
+  return true;
+}
+
+bool Controller_c::setWheelSpeeds(
+    Robot_c& robot, float leftSpeedMmPerSec, float rightSpeedMmPerSec) {
+  int16_t leftPwm = 0, rightPwm = 0;
+  if (!speedToPwm(leftSpeedMmPerSec, leftPwm) ||
+      !speedToPwm(rightSpeedMmPerSec, rightPwm)) return false;
+  return robot.setMotorPWM(leftPwm, rightPwm);
 }
