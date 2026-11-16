@@ -1,4 +1,4 @@
-# Path Reproduction 实验设计：目标、步骤与执行手册（R = 200 mm / 4 张 A4 桌面版）
+# Path Reproduction 实验设计：目标、步骤与执行手册（R = 200 mm / 2 张 A3 桌面版）
 
 
 
@@ -37,7 +37,7 @@
 - **三种位姿来源**，在所有图表中分开标注：
   1. `simulation`（数字孪生）：模拟器每 $\Delta t = 10\text{ ms}$ 根据 PWM 算出轮速并积分得到。
   2. `real_odometry`（实体编码器里程计）：[`OdometryModel.cpp`](StampC3_Template/OdometryModel.cpp) 每 $10\text{ ms}$ 读取左右轮编码器脉冲变化 $\Delta c_L, \Delta c_R$，按 $\Delta d = \frac{\Delta c}{358.3} \times 2\pi r$ 积分得到（**只反映轮子转动圈数，不等于真实地面位置**）。
-  3. `external_pose`（独立外部真实测量）：在 **4 张 A4 拼接坐标纸** 上读取车身前后标记点 $P_f, P_b$ 的坐标换算得到（或用固定俯拍相机视频换算）。
+  3. `external_pose`（独立外部真实测量）：在 **2 张 A3 拼接坐标纸** 上读取车身前后标记点 $P_f, P_b$ 的坐标换算得到（或用固定俯拍相机视频换算）。
   > [!IMPORTANT]
   > 模式 B 下实体里程计几乎“按定义”会接近目标，此时 `real_odometry` 与 `simulation` 的一致**不能说明**真实轨迹正确，必须依靠 `external_pose` 才有意义。
 
@@ -283,12 +283,37 @@ run_id,source,mode,elapsed_ms,segment,phase,x_mm,y_mm,theta_rad,pwm_left,pwm_rig
 | 步骤 | 内容 | 涉及文件 |
 |---|---|---|
 | 1 | 100% 原尺寸打印并拼接 4 张 A4 坐标纸 | [Coordinate_Grid_4xA4_R200mm.pdf](Coordinate_Grid_4xA4_R200mm.pdf)、[generate_grid_pdf.py](generate_grid_pdf.py) |
-| 2 | 在实体固件中实现“动作序列执行器”（段列表：PWM、持续时间、停顿），替换巡线示例 | [Controller.cpp](StampC3_Template/Controller.cpp) |
+| 2 | 在现有 `updateMotion()` 中按具体 `MotionStep` 组织路径；已接入单段圆弧，后续补充直线与原地旋转及步骤切换（见 10.1–10.2） | [Controller.cpp](StampC3_Template/Controller.cpp)、[Controller.h](StampC3_Template/Controller.h) |
 | 3 | 遥测增加 `segment`、`phase`、编码器计数与机器人端时间戳 | [Controller.cpp](StampC3_Template/Controller.cpp)、[RobotWifiAP.cpp](StampC3_Template/RobotWifiAP.cpp) |
 | 4 | 数字孪生实现相同的段列表，从同一配置读取 | [Controller.pde](DigitalTwin/Controller.pde) |
 | 5 | 电脑端把遥测和模拟结果保存为 CSV | [TCPTelemetry.pde](DigitalTwin/TCPTelemetry.pde) |
 | 6 | 编写分析脚本：对齐、插值、第 7 节误差拆解、出图 | `tests/` 或新建 `analysis/` |
 | 7 | 依次执行 E0 → E1–E4 → E5 → E6 | — |
 
-- **控制变量**：同一张 4×A4 坐标纸桌面、同一负载、电量区间一致、起点框定位、交替运行顺序、正式实验期间冻结 PWM 与模型参数。
+- **控制变量**：同一张 2×A3 坐标纸桌面、同一负载、电量区间一致、起点框定位、交替运行顺序、正式实验期间冻结 PWM 与模型参数。
 - **方法局限**：若某次实验未测 `external_pose`，结论只能表述为“里程计—模型差异”；坐标纸打点与读数存在约 $\pm 1\sim 2\text{ mm}$ 的位置不确定度和角度换算不确定度，应在报告中如实说明。
+
+### 10.1 当前固件代码说明：`updateMotion()`
+
+实体运动的调用链为 `loop()` → `controller.update(robot, server)` → `updateMotion(robot, now)`。`update()` 最快约每 10 ms 执行一次采集与控制；按键或 `setSignal(1)` 启动后，才会调用 `updateMotion()`。编码器读取成功时，先更新里程计并调用 `measureWheelSpeed()`，再执行当前动作；测速函数累计至少 100 ms 才更新一次实测轮速。
+
+`updateMotion()` 是**当前路径步骤的调度入口**。它通过 `switch (motionStep)` 选择对应的 `case`，每个控制周期继续调用该步骤的运动函数，不会在一次调用中阻塞等待整条路径结束。
+
+- **`MotionStep` 表示具体步骤**
+- **`ExperimentPhase` 表示执行状态** ：`WAITING → RUNNING → SETTLING → DONE`。运动达到名义持续时间后发送零 PWM，进入非阻塞的 2000 ms 停车观察阶段，再返回 `DONE`。
+- **步骤切换必须显式编写**：当前步骤返回 `DONE` 后，应在对应 `case` 内给 `motionStep` 赋下一步，并把 `experimentPhase` 设回 `WAITING`，让下一控制周期进入新动作。每步进入时建立本步计时；整条路径的里程计与测速基准仅在首次启动时建立，动作之间不清零位姿，以便观察累积误差。
+- **完成或故障时保持停车**：进入 `updateMotion()` 时若状态为 `DONE` 或 `FAULT`，会调用 `stopMotion()` 并返回。
+
+
+
+
+### 10.2 后续直线与原地旋转的接入位置
+
+后续在 `Controller_c` 中新增直线和原地旋转运动函数后，**统一在 `Controller.cpp` 的 `updateMotion()` 对应 `case` 中调用，并在这里编写动作参数和路径顺序**。例如可将函数命名为 `runStraight()`、`runTurnInPlace()`；这些是待实现名称，不是当前已有接口。
+
+接入时按以下方式扩展：
+
+1. 在 `Controller.h` 的 `MotionStep` 中为每个具体动作增加独立步骤，例如 `STRAIGHT_1`、`TURN_1`、`ARC_1`、`STRAIGHT_2`；同类动作在路径中出现两次，也分别占一个步骤。
+2. 在 `updateMotion()` 中增加对应 `case`，调用新增运动函数并填写该段参数。具体运动函数负责本段的启动、执行、停车观察、完成判断和故障处理。
+3. 在每个步骤返回 `DONE` 后，显式指定下一步，并将阶段设为 `WAITING`。例如可组织为 `STRAIGHT_1 → TURN_1 → ARC_1 → STRAIGHT_2`；实际顺序以各 `case` 内的下一步赋值为准。
+4. 最后一步完成后保留 `DONE`，使后续周期持续请求停车；任一步进入 `FAULT` 时停止整条路径。新增函数应延续非阻塞执行方式，保持传感器采集和遥测更新，不在动作之间重置累计位姿。
