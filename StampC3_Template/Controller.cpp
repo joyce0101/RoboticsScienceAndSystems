@@ -8,9 +8,12 @@ constexpr float Controller_c::BASE_PWM;
 constexpr float Controller_c::LINE_FOLLOW_GAIN;
 constexpr float Controller_c::RECOVERY_LEFT_PWM;
 constexpr float Controller_c::RECOVERY_RIGHT_PWM;
+
 Controller_c::Controller_c()
   : deadband_timer(2000),
     saturation_timer(3000),
+    straight_timer(2000),
+    straight_trial(0),
     update_timer(UPDATE_INTERVAL_MS),
     telemetry_timer(TELEMETRY_INTERVAL_MS),
     ramp_timer(1000) {
@@ -43,6 +46,11 @@ void Controller_c::reset() {
   saturation_trial = 1;
   saturation_sample = 0;
   saturation_phase_start_ms = 0;
+  straight_phase = STR_IDLE;
+  straight_left_pwm = 0;
+  straight_right_pwm = 0;
+  straight_sample = 0;
+  straight_run_start_ms = 0;
 
 
 }
@@ -94,7 +102,7 @@ void Controller_c::update(Robot_c &robot, RobotWifiAP_c &server) {
   if (robot.getEncoders()) {
     const unsigned long sample_time_ms = robot.getMillis();
     odometry.update(robot.getLeftEncoderCount(), robot.getRightEncoderCount());
-    measureWheelSpeed(robot, sample_time_ms);
+    measureWheelSpeed(robot, sample_time_ms, &server);
   }
 
   // Pose estimation from the Pololu 3Pi robot itself.
@@ -110,20 +118,22 @@ void Controller_c::update(Robot_c &robot, RobotWifiAP_c &server) {
     }
   }
 
-  // Run the selected individual motor experiment after the start signal.
+  // Enable one experiment only. Its header setting selects one wheel per run.
   if (signal == 1) {
-    testSaturation(robot);
+    runStraightPWM(robot, 60, 60, 1000, &server);
+    // runStraightPWM(robot, 62, 58, 1000, &server);
+    // testSaturation(robot);
     // testDeadband(robot);
     // motorStartStopTest(robot, now);
   }
 
   // Use another TaskTimer_c to limit how often we transmit telemetry data
   // on WiFi and Serial.
-  if (telemetry_timer.isReady(now)) {
-    telemetry_timer.resetTimer(now);
-    publishTelemetry(robot, server, now);
+  // if (telemetry_timer.isReady(now)) {
+  //   telemetry_timer.resetTimer(now);
+  //   publishTelemetry(robot, server, now);
 
-  }
+  // }
 }
 
 
@@ -235,7 +245,7 @@ void Controller_c::motorStartStopTest(Robot_c &robot, unsigned long now) {
   robot.setMotorPWM(ramp_pwm, ramp_pwm);
 }
 
-void Controller_c::measureWheelSpeed(Robot_c &robot, unsigned long now) {
+void Controller_c::measureWheelSpeed(Robot_c &robot, unsigned long now, RobotWifiAP_c *server) {
 
   const int32_t count_left = robot.getLeftEncoderCount();
   const int32_t count_right = robot.getRightEncoderCount();
@@ -275,37 +285,41 @@ void Controller_c::measureWheelSpeed(Robot_c &robot, unsigned long now) {
   speed_right = (float)delta_right * radians_per_count
       * odometry.rightWheelRadiusMm * counts_per_second_scale;
 
-  // time_ms,left_count,right_count,dt_ms,left_mm_s,right_mm_s
-  // Serial.printf("%lu,%ld,%ld,%lu,%.3f,%.3f\n",
-  //               now, (long)count_left, (long)count_right,
-  //               dt_ms, speed_left, speed_right);
+  // Compact CSV: wheel,pwm,trial,phase,phase_ms,speed_mm_s.
   if (signal == 1 && deadband_phase == DB_RUN) {
     deadband_sample++;
-    const unsigned long run_ms = now - deadband_run_start_ms;
-    Serial.printf(
-      "%lu,L,%d,%d,%d,%lu,%ld,%ld,%lu,%.3f,%.3f\n",
-      now,
-      test_pwm,
-      deadband_trial,
-      deadband_sample,
-      run_ms,
-      (long)count_left,
-      (long)count_right,
-      dt_ms,
-      speed_left,
-      speed_right);
+    Serial.printf("%c,%d,%d,RUN,%lu,%.3f\n",
+                  DB_TEST_RIGHT_WHEEL ? 'R' : 'L', test_pwm, deadband_trial,
+                  now - deadband_run_start_ms,
+                  DB_TEST_RIGHT_WHEEL ? speed_right : speed_left);
   }
 
   // Keep settling rows for checking the transient, but average MEASURE only.
   if (signal == 1 &&
       (saturation_phase == SAT_SETTLE || saturation_phase == SAT_MEASURE)) {
     saturation_sample++;
-    Serial.printf("%lu,L,%d,%d,%d,%s,%lu,%ld,%ld,%lu,%.3f,%.3f\n",
-                  now, saturation_pwm, saturation_trial, saturation_sample,
+    Serial.printf("%c,%d,%d,%s,%lu,%.3f\n",
+                  SAT_TEST_RIGHT_WHEEL ? 'R' : 'L', saturation_pwm, saturation_trial,
                   saturation_phase == SAT_SETTLE ? "SETTLE" : "MEASURE",
                   now - saturation_phase_start_ms,
-                  (long)count_left, (long)count_right, (unsigned long)dt_ms,
-                  speed_left, speed_right);
+                  SAT_TEST_RIGHT_WHEEL ? speed_right : speed_left);
+  }
+
+  if (signal == 1 && straight_phase == STR_RUN) {
+    straight_sample++;
+    const unsigned long run_ms = now - straight_run_start_ms;
+    const char* phase_label = (run_ms <= 500UL) ? "SETTLE" : "MEASURE";
+    const float theta_deg = odometry.pose.theta * (360.0f / (float)TWO_PI);
+    Serial.printf("STRAIGHT,%d,%d,%d,%s,%lu,%.3f,%.3f,%.2f,%.2f,%.2f\n",
+                  straight_trial, straight_left_pwm, straight_right_pwm,
+                  phase_label, run_ms, speed_left, speed_right,
+                  odometry.pose.x, odometry.pose.y, theta_deg);
+    if (server != nullptr) {
+      server->printf("STRAIGHT,%d,%d,%d,%s,%lu,%.3f,%.3f,%.2f,%.2f,%.2f\n",
+                     straight_trial, straight_left_pwm, straight_right_pwm,
+                     phase_label, run_ms, speed_left, speed_right,
+                     odometry.pose.x, odometry.pose.y, theta_deg);
+    }
   }
 
   // 时间与计数必须一起更新。
@@ -328,7 +342,8 @@ void Controller_c::testDeadband(Robot_c &robot) {
     // 每次实验前，保持停车休息2秒
     case DB_REST:
       if (deadband_timer.isReady()) {
-        if(!robot.setMotorPWM(test_pwm, 0)) {
+        if(!robot.setMotorPWM(DB_TEST_RIGHT_WHEEL ? 0 : test_pwm,
+                              DB_TEST_RIGHT_WHEEL ? test_pwm : 0)) {
           deadband_phase = DB_IDLE; // Stay in rest phase until the command is sent successfully
           return; // Wait until the start command is sent successfully
         }
@@ -380,7 +395,8 @@ void Controller_c::testSaturation(Robot_c &robot) {
 
     case SAT_REST:
       if (!saturation_timer.isReady()) return;
-      if (!robot.setMotorPWM(saturation_pwm, 0)) {
+      if (!robot.setMotorPWM(SAT_TEST_RIGHT_WHEEL ? 0 : saturation_pwm,
+                             SAT_TEST_RIGHT_WHEEL ? saturation_pwm : 0)) {
         saturation_phase = SAT_IDLE; // Retry stopping before another start.
         return;
       }
@@ -420,6 +436,68 @@ void Controller_c::testSaturation(Robot_c &robot) {
       saturation_timer.setIntervalMS(3000);
       saturation_timer.resetTimer();
       saturation_phase = SAT_REST;
+      break;
+  }
+}
+
+void Controller_c::runStraightPWM(Robot_c &robot, int leftPwm, int rightPwm, unsigned long durationMs,
+                                  RobotWifiAP_c *server) {
+  switch (straight_phase) {
+    case STR_IDLE:
+      if (!robot.setMotorPWM(0, 0)) {
+        return;
+      }
+      straight_trial++;
+      straight_left_pwm = leftPwm;
+      straight_right_pwm = rightPwm;
+      straight_sample = 0;
+      speed_initialised = false;
+      straight_timer.setIntervalMS(2000);
+      straight_timer.resetTimer();
+      straight_phase = STR_REST;
+      break;
+
+    case STR_REST:
+      if (!straight_timer.isReady()) {
+        return;
+      }
+      if (!robot.setMotorPWM((float)leftPwm, (float)rightPwm)) {
+        return;
+      }
+      odometry.reset();
+      odometry.update(robot.getLeftEncoderCount(), robot.getRightEncoderCount());
+      straight_left_pwm = leftPwm;
+      straight_right_pwm = rightPwm;
+      straight_sample = 0;
+      speed_initialised = false;
+      straight_run_start_ms = robot.getMillis();
+      straight_timer.setIntervalMS(durationMs);
+      straight_timer.resetTimer();
+      straight_phase = STR_RUN;
+      break;
+
+    case STR_RUN:
+      if (!straight_timer.isReady()) {
+        return;
+      }
+      if (!robot.setMotorPWM(0, 0)) {
+        return;
+      }
+      {
+        const float theta_deg = odometry.pose.theta * (360.0f / (float)TWO_PI);
+        const unsigned long run_ms = robot.getMillis() - straight_run_start_ms;
+        Serial.printf("SUMMARY,%d,%d,%d,END,%lu,%.3f,%.3f,%.2f,%.2f,%.2f\n",
+                      straight_trial, straight_left_pwm, straight_right_pwm,
+                      run_ms, speed_left, speed_right,
+                      odometry.pose.x, odometry.pose.y, theta_deg);
+        if (server != nullptr) {
+          server->printf("SUMMARY,%d,%d,%d,END,%lu,%.3f,%.3f,%.2f,%.2f,%.2f\n",
+                         straight_trial, straight_left_pwm, straight_right_pwm,
+                         run_ms, speed_left, speed_right,
+                         odometry.pose.x, odometry.pose.y, theta_deg);
+        }
+      }
+      setSignal(0);
       break;
   }
 }

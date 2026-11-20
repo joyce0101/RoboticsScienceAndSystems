@@ -34,12 +34,13 @@ class Controller_c {
     float speed_right;  // Right wheel rim speed, mm/s.
     bool speed_initialised;
     // Deadband: find where motion begins
-    // 首次只测试 PWM 25 一次，验证流程。
-    // 跑通后再改为 0～60、步长 5、每档重复 3 次。
-    static const int DB_PWM_MIN = 25;
-    static const int DB_PWM_MAX = 30;
+    // Single-wheel starting-threshold scan; each PWM is repeated from rest.
+    static const int DB_PWM_MIN = 30;
+    static const int DB_PWM_MAX = 35;
     static const int DB_PWM_STEP = 1;
     static const int DB_REPEATS = 3;
+    // Select before building: true = right, false = left; inactive wheel PWM is 0.
+    static const bool DB_TEST_RIGHT_WHEEL = false;
     enum DeadbandPhase {
       DB_IDLE,
       DB_REST,
@@ -54,11 +55,13 @@ class Controller_c {
 
 unsigned long deadband_run_start_ms;
 
-    // Saturation pilot: expand MAX to 100 and REPEATS to 3 after checking stops.
-    static const int SAT_PWM_MIN = 100;
-    static const int SAT_PWM_MAX = 130;
-    static const int SAT_PWM_STEP = 30;
+    // Single-wheel settled-speed scan. Current 100/130 settings are a short check.
+    static const int SAT_PWM_MIN = 170;
+    static const int SAT_PWM_MAX = 170;
+    static const int SAT_PWM_STEP = 20;
     static const int SAT_REPEATS = 3;
+    // Select separately from deadband; collect each wheel in its own run/log.
+    static const bool SAT_TEST_RIGHT_WHEEL = false;
     enum SaturationPhase { SAT_IDLE, SAT_REST, SAT_SETTLE, SAT_MEASURE };
     SaturationPhase saturation_phase;
     TaskTimer_c saturation_timer;
@@ -66,6 +69,15 @@ unsigned long deadband_run_start_ms;
     int saturation_trial;
     int saturation_sample;
     unsigned long saturation_phase_start_ms;
+
+    enum StraightPhase { STR_IDLE, STR_REST, STR_RUN };
+    StraightPhase straight_phase;
+    TaskTimer_c straight_timer;
+    int straight_left_pwm;
+    int straight_right_pwm;
+    int straight_trial;
+    int straight_sample;
+    unsigned long straight_run_start_ms;
 
     /** @brief Fastest interval between controller and I2C acquisition cycles. */
     static const unsigned long UPDATE_INTERVAL_MS = 10;
@@ -118,6 +130,9 @@ unsigned long deadband_run_start_ms;
      * local odometry is updated only after a successful encoder read. The method
      * returns early between update intervals.
      */
+    void runStraightPWM(Robot_c &robot, int leftPwm, int rightPwm, unsigned long durationMs,
+                        RobotWifiAP_c *server = nullptr);
+
     void update(Robot_c &robot, RobotWifiAP_c &server);
 
   private:
@@ -143,7 +158,7 @@ unsigned long deadband_run_start_ms;
     /** @brief Applies the nominal controller behaviour for the current mode. */
     void runLineFollower(Robot_c &robot, unsigned long now);
     void motorStartStopTest(Robot_c &robot, unsigned long now);
-    void measureWheelSpeed(Robot_c &robot, unsigned long now);
+    void measureWheelSpeed(Robot_c &robot, unsigned long now, RobotWifiAP_c *server = nullptr);
     void testDeadband(Robot_c &robot);
     void testSaturation(Robot_c &robot);
 
