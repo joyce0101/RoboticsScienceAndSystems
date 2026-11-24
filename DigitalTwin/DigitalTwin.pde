@@ -31,6 +31,11 @@ void setup() {
   //surface.setLocation(0, 0);
   surface.setTitle("CW2026 Digital Twin");
   simulator = new Simulator(this, SURFACE_OFFSET_X_MM, SURFACE_OFFSET_Y_MM);
+  // 左右轮分别用悬空实测拟合（mm/s），有效范围PWM 40–140
+  simulator.robot.motors.left.gainMmPerS = 3.603033;
+  simulator.robot.motors.left.interceptMmPerS = -14.525098;
+  simulator.robot.motors.right.gainMmPerS = 3.817527;
+  simulator.robot.motors.right.interceptMmPerS = -9.928359;
   
 }
 

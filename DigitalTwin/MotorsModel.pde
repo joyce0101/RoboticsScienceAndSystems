@@ -26,6 +26,9 @@ class MotorsModel_c {
 class MotorModel_c {
   float pwm = 0;
   float speedMmPerMs = 0;
+  // 悬空实测拟合参数（mm/s），在DigitalTwin.pde的setup()里分别设置
+  float gainMmPerS = 0;
+  float interceptMmPerS = 0;
 
   /** @brief Limits and stores a requested PWM value in [-200, +200]. */
   void setPWM(float value) { pwm = constrain(value, -200, 200); }
@@ -34,6 +37,16 @@ class MotorModel_c {
    * @param maximumSpeed Maximum wheel speed in mm/ms.
    */
   void update(float maximumSpeed) {
-    speedMmPerMs = map(pwm, -200, 200, -maximumSpeed, maximumSpeed);
+    // 原来的线性映射，做基线对比时改回这一行
+    //speedMmPerMs = map(pwm, -200, 200, -maximumSpeed, maximumSpeed);
+    if (pwm > 0) {
+      // 悬空实测拟合，单位mm/s，除以1000换成mm/ms
+      speedMmPerMs = (gainMmPerS * pwm + interceptMmPerS) / 1000.0;
+    } else if (pwm < 0) {
+      // 反向数据还没有，暂时沿用原来的映射
+      speedMmPerMs = map(pwm, -200, 200, -maximumSpeed, maximumSpeed);
+    } else {
+      speedMmPerMs = 0;
+    }
   }
 }
