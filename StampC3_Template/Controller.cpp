@@ -37,7 +37,7 @@ void Controller_c::reset() {
   speed_initialised = false;
   encoder_sample_updated = false;
   if (!actionActive) {
-    motionStep = MotionStep::ARC_1;
+    motionStep = MotionStep::STRAIGHT_FWD;
     experimentPhase = ExperimentPhase::WAITING;
     motionStartMs = settlingStartMs = lastEncoderMs = 0;
     motionBaselineInitialized = false;
@@ -121,6 +121,7 @@ void Controller_c::update(Robot_c &robot, RobotWifiAP_c &server) {
       speed_left = speed_right = 0.0f;
       speed_initialised = true;
       motionBaselineInitialized = true;
+      routeStartMs = now;
     }
     updateMotion(robot, now);
 
@@ -224,6 +225,11 @@ void Controller_c::updateMotion(Robot_c &robot, unsigned long now) {
     stopMotion(robot);
     return;
   }
+  // 按下按钮后先静止1 s，记录静止时的起点
+  if (uint32_t(now) - routeStartMs < 1000) {
+    robot.setMotorPWM(0, 0);
+    return;
+  }
   switch (motionStep) {
     case MotionStep::ARC_1:
       if (runArc(robot, uint32_t(now), 200.0f, -float(TWO_PI) / 4.0f, 180.0f)
@@ -239,6 +245,22 @@ void Controller_c::updateMotion(Robot_c &robot, unsigned long now) {
       experimentPhase = ExperimentPhase::FAULT;
       stopMotion(robot);
       return;
+    // 单动作试验：参数暂定，标定仿真后再改
+    case MotionStep::STRAIGHT_FWD:
+      runTimedPwm(robot, uint32_t(now), 80, 80, 3500);
+      break;
+    case MotionStep::TURN_LEFT:
+      runTimedPwm(robot, uint32_t(now), -40, 40, 1414);
+      break;
+    case MotionStep::TURN_RIGHT:
+      runTimedPwm(robot, uint32_t(now), 40, -40, 1414);
+      break;
+    case MotionStep::ARC_LEFT:
+      runTimedPwm(robot, uint32_t(now), 62, 98, 3142);
+      break;
+    case MotionStep::ARC_RIGHT:
+      runTimedPwm(robot, uint32_t(now), 98, 62, 3142);
+      break;
     // case MotionStep::ARC_2:
     //   runArc(robot, uint32_t(now), 100.0f, -float(TWO_PI) / 4.0f, 180.0f);
     //   break;
@@ -350,6 +372,32 @@ Controller_c::ExperimentPhase Controller_c::runArc(
     if (!stopMotion(robot)) return experimentPhase;
     if (experimentPhase == ExperimentPhase::SETTLING &&
         uint32_t(nowMs - settlingStartMs) >= 2000UL) experimentPhase = ExperimentPhase::DONE;
+  }
+  return experimentPhase;
+}
+
+Controller_c::ExperimentPhase Controller_c::runTimedPwm(
+    Robot_c& robot, uint32_t nowMs, int16_t leftPwm, int16_t rightPwm, uint32_t durationMs) {
+  // 刚开始：记下开始时间
+  if (experimentPhase == ExperimentPhase::WAITING) {
+    motionStartMs = nowMs;
+    experimentPhase = ExperimentPhase::RUNNING;
+  }
+  // 没到时间就一直发PWM，到时间就停车
+  if (experimentPhase == ExperimentPhase::RUNNING) {
+    if (nowMs - motionStartMs >= durationMs) {
+      experimentPhase = ExperimentPhase::SETTLING;
+      settlingStartMs = nowMs;
+    } else {
+      robot.setMotorPWM(leftPwm, rightPwm);
+    }
+  }
+  // 停车后继续记录2000 ms，看滑行
+  if (experimentPhase == ExperimentPhase::SETTLING) {
+    robot.setMotorPWM(0, 0);
+    if (nowMs - settlingStartMs >= 2000) {
+      experimentPhase = ExperimentPhase::DONE;
+    }
   }
   return experimentPhase;
 }

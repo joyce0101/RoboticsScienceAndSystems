@@ -120,6 +120,9 @@ class Controller_c {
     // 在updateMotion中使用，读取update()本周期已采集的编码器有效标志。
     ExperimentPhase runArc(Robot_c& robot, uint32_t nowMs,
                            float radiusMm, float angleRad, float centreSpeedMmPerSec);
+    // 按给定左右PWM跑durationMs，再停车记录2000 ms；直线、原地转和圆弧共用。
+    ExperimentPhase runTimedPwm(Robot_c& robot, uint32_t nowMs,
+                                int16_t leftPwm, int16_t rightPwm, uint32_t durationMs);
 
   private:
     /** @brief Internal modes used by the nominal line-following demonstration. */
@@ -138,11 +141,12 @@ class Controller_c {
 
 
     // 每个枚举值是路线中的一个具体动作，同类型动作也各占一步。
-    enum class MotionStep { ARC_1, STRAIGHT_1};
+    enum class MotionStep { ARC_1, STRAIGHT_1, STRAIGHT_FWD, TURN_LEFT, TURN_RIGHT, ARC_LEFT, ARC_RIGHT };
     MotionStep motionStep = MotionStep::ARC_1;
     ExperimentPhase experimentPhase = ExperimentPhase::WAITING;
     uint32_t motionStartMs = 0;
     uint32_t settlingStartMs = 0;
+    uint32_t routeStartMs = 0;
     uint32_t lastEncoderMs = 0;
     bool motionBaselineInitialized = false;
     bool encoder_sample_updated = false;
