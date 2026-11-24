@@ -35,8 +35,8 @@ class Controller_c {
     bool speed_initialised;
     // Deadband: find where motion begins
     // Single-wheel starting-threshold scan; each PWM is repeated from rest.
-    static const int DB_PWM_MIN = 30;
-    static const int DB_PWM_MAX = 35;
+    static const int DB_PWM_MIN = 25;
+    static const int DB_PWM_MAX = 30;
     static const int DB_PWM_STEP = 1;
     static const int DB_REPEATS = 3;
     // Select before building: true = right, false = left; inactive wheel PWM is 0.
@@ -56,12 +56,12 @@ class Controller_c {
 unsigned long deadband_run_start_ms;
 
     // Single-wheel settled-speed scan. Current 100/130 settings are a short check.
-    static const int SAT_PWM_MIN = 170;
-    static const int SAT_PWM_MAX = 170;
+    static const int SAT_PWM_MIN = 40;
+    static const int SAT_PWM_MAX = 180;
     static const int SAT_PWM_STEP = 20;
     static const int SAT_REPEATS = 3;
     // Select separately from deadband; collect each wheel in its own run/log.
-    static const bool SAT_TEST_RIGHT_WHEEL = false;
+    static const bool SAT_TEST_RIGHT_WHEEL = true;
     enum SaturationPhase { SAT_IDLE, SAT_REST, SAT_SETTLE, SAT_MEASURE };
     SaturationPhase saturation_phase;
     TaskTimer_c saturation_timer;
@@ -78,6 +78,13 @@ unsigned long deadband_run_start_ms;
     int straight_trial;
     int straight_sample;
     unsigned long straight_run_start_ms;
+
+    // Slew-rate, lag and coasting step-response capture (10 ms raw encoder counts).
+    enum StepPhase { STEP_IDLE, STEP_REST, STEP_UP, STEP_COAST };
+    StepPhase step_phase;
+    TaskTimer_c step_timer;
+    int step_trial;
+    unsigned long step_phase_start_ms;
 
     /** @brief Fastest interval between controller and I2C acquisition cycles. */
     static const unsigned long UPDATE_INTERVAL_MS = 10;
@@ -132,6 +139,9 @@ unsigned long deadband_run_start_ms;
      */
     void runStraightPWM(Robot_c &robot, int leftPwm, int rightPwm, unsigned long durationMs,
                         RobotWifiAP_c *server = nullptr);
+    void testStepResponse(Robot_c &robot, int leftPwm, int rightPwm,
+                          unsigned long runMs = 1000, unsigned long coastMs = 1000,
+                          RobotWifiAP_c *server = nullptr);
 
     void update(Robot_c &robot, RobotWifiAP_c &server);
 

@@ -14,6 +14,8 @@ Controller_c::Controller_c()
     saturation_timer(3000),
     straight_timer(2000),
     straight_trial(0),
+    step_timer(2000),
+    step_trial(0),
     update_timer(UPDATE_INTERVAL_MS),
     telemetry_timer(TELEMETRY_INTERVAL_MS),
     ramp_timer(1000) {
@@ -51,6 +53,8 @@ void Controller_c::reset() {
   straight_right_pwm = 0;
   straight_sample = 0;
   straight_run_start_ms = 0;
+  step_phase = STEP_IDLE;
+  step_phase_start_ms = 0;
 
 
 }
@@ -120,7 +124,8 @@ void Controller_c::update(Robot_c &robot, RobotWifiAP_c &server) {
 
   // Enable one experiment only. Its header setting selects one wheel per run.
   if (signal == 1) {
-    runStraightPWM(robot, 60, 60, 1000, &server);
+    testStepResponse(robot, 60, 55, 1000, 1000, &server);
+    // runStraightPWM(robot, 60, 60, 1000, &server);
     // runStraightPWM(robot, 62, 58, 1000, &server);
     // testSaturation(robot);
     // testDeadband(robot);
@@ -498,6 +503,76 @@ void Controller_c::runStraightPWM(Robot_c &robot, int leftPwm, int rightPwm, uns
         }
       }
       setSignal(0);
+      break;
+  }
+}
+
+void Controller_c::testStepResponse(Robot_c &robot, int leftPwm, int rightPwm,
+                                    unsigned long runMs, unsigned long coastMs,
+                                    RobotWifiAP_c *server) {
+  const unsigned long now = robot.getMillis();
+  const long count_l = (long)robot.getLeftEncoderCount();
+  const long count_r = (long)robot.getRightEncoderCount();
+
+  switch (step_phase) {
+    case STEP_IDLE:
+      robot.setMotorPWM(0, 0);
+      step_trial++;
+      step_timer.setIntervalMS(2000);
+      step_timer.resetTimer(now);
+      step_phase = STEP_REST;
+      break;
+
+    case STEP_REST:
+      if (!step_timer.isReady(now)) return;
+      robot.setMotorPWM((float)leftPwm, (float)rightPwm);
+      step_phase_start_ms = now;
+      step_timer.setIntervalMS(runMs);
+      step_timer.resetTimer(now);
+      step_phase = STEP_UP;
+      Serial.printf("STEP,%d,UP,0,%d,%d,%ld,%ld\n",
+                    step_trial, leftPwm, rightPwm, count_l, count_r);
+      if (server != nullptr) {
+        server->printf("STEP,%d,UP,0,%d,%d,%ld,%ld\n",
+                       step_trial, leftPwm, rightPwm, count_l, count_r);
+      }
+      break;
+
+    case STEP_UP:
+      Serial.printf("STEP,%d,UP,%lu,%d,%d,%ld,%ld\n",
+                    step_trial, now - step_phase_start_ms,
+                    leftPwm, rightPwm, count_l, count_r);
+      if (server != nullptr) {
+        server->printf("STEP,%d,UP,%lu,%d,%d,%ld,%ld\n",
+                       step_trial, now - step_phase_start_ms,
+                       leftPwm, rightPwm, count_l, count_r);
+      }
+      if (step_timer.isReady(now)) {
+        robot.setMotorPWM(0, 0);
+        step_phase_start_ms = now;
+        step_timer.setIntervalMS(coastMs);
+        step_timer.resetTimer(now);
+        step_phase = STEP_COAST;
+        Serial.printf("STEP,%d,COAST,0,0,0,%ld,%ld\n",
+                      step_trial, count_l, count_r);
+        if (server != nullptr) {
+          server->printf("STEP,%d,COAST,0,0,0,%ld,%ld\n",
+                         step_trial, count_l, count_r);
+        }
+      }
+      break;
+
+    case STEP_COAST:
+      Serial.printf("STEP,%d,COAST,%lu,0,0,%ld,%ld\n",
+                    step_trial, now - step_phase_start_ms, count_l, count_r);
+      if (server != nullptr) {
+        server->printf("STEP,%d,COAST,%lu,0,0,%ld,%ld\n",
+                       step_trial, now - step_phase_start_ms, count_l, count_r);
+      }
+      if (step_timer.isReady(now)) {
+        robot.setMotorPWM(0, 0);
+        setSignal(0);
+      }
       break;
   }
 }
