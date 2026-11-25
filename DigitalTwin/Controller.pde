@@ -113,10 +113,10 @@ class Controller_c {
         runTimedPwm(robot, now, 58, 57, 1940);
         break;
       case TURN_LEFT:
-        runTimedPwm(robot, now, -41, 40, 620);
+        runTimedPwm(robot, now, -41, 40, 1250);  // 180° 第1组 B=90 r=16
         break;
       case TURN_RIGHT:
-        runTimedPwm(robot, now, 40, -39, 640);
+        runTimedPwm(robot, now, 40, -39, 1270);  // 180° 第1组 B=90 r=16
         break;
       case ARC_LEFT:
         runTimedPwm(robot, now, 48, 68, 1730);
