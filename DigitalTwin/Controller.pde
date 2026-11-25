@@ -26,7 +26,11 @@ class Controller_c {
   void reset() {
     signal = 0;
     // 每次试验只改这一行，选这次跑哪个动作
-    motionStep = ARC_LEFT;
+    // motionStep = STRAIGHT_FWD;
+    motionStep = TURN_LEFT;
+    // motionStep = TURN_RIGHT;
+    // motionStep = ARC_LEFT;
+    // motionStep = ARC_RIGHT;
     phase = PHASE_WAITING;
     routeStarted = false;
     routeStartMs = 0;
