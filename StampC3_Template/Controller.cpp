@@ -24,8 +24,8 @@ void Controller_c::reset() {
   if (!actionActive) {
     // 每次试验只改这一行，选这次跑哪个动作
     // motionStep = MotionStep::STRAIGHT_FWD;
-    // motionStep = MotionStep::TURN_LEFT;
-    motionStep = MotionStep::TURN_RIGHT;
+    motionStep = MotionStep::TURN_LEFT;
+    // motionStep = MotionStep::TURN_RIGHT;
     // motionStep = MotionStep::ARC_LEFT;
     // motionStep = MotionStep::ARC_RIGHT;
     experimentPhase = ExperimentPhase::WAITING;
@@ -151,13 +151,13 @@ void Controller_c::updateMotion(Robot_c &robot, unsigned long now) {
       break;
     case MotionStep::TURN_LEFT:
       // runTimedPwm(robot, uint32_t(now), -41, 40, 1250);  // 180° 第1组 B=90 r=16
-      runTimedPwm(robot, uint32_t(now), -41, 40, 1160);  // 180° 第2组 B=85.8 r=16.36
-      // runTimedPwm(robot, uint32_t(now), -41, 40, 1220);  // 180° 第3组 B=85.8 r=16.36 +阶跃响应
+      // runTimedPwm(robot, uint32_t(now), -41, 40, 1160);  // 180° 第2组 B=85.8 r=16.36
+      runTimedPwm(robot, uint32_t(now), -41, 40, 1220);  // 180° 第3组 B=85.8 r=16.36 +阶跃响应
       break;
     case MotionStep::TURN_RIGHT:
       // runTimedPwm(robot, uint32_t(now), 40, -39, 1270);  // 180° 第1组 B=90 r=16
-      runTimedPwm(robot, uint32_t(now), 40, -39, 1180);  // 180° 第2组 B=85.8 r=16.36
-      // runTimedPwm(robot, uint32_t(now), 40, -39, 1240);  // 180° 第3组 B=85.8 r=16.36 +阶跃响应
+      // runTimedPwm(robot, uint32_t(now), 40, -39, 1180);  // 180° 第2组 B=85.8 r=16.36
+      runTimedPwm(robot, uint32_t(now), 40, -39, 1240);  // 180° 第3组 B=85.8 r=16.36 +阶跃响应
       break;
     case MotionStep::ARC_LEFT:
       runTimedPwm(robot, uint32_t(now), 48, 68, 1730);
