@@ -31,6 +31,7 @@ from typing import Tuple
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_FWD_FIT = REPO_ROOT / "data" / "forward_steady" / "fit.json"
 DEFAULT_REV_FIT = REPO_ROOT / "data" / "reverse_steady" / "fit.json"
+DEFAULT_STEP_RESULTS = REPO_ROOT / "output" / "step_response_shared" / "results.json"
 
 
 @dataclass(frozen=True)
@@ -399,6 +400,37 @@ def print_result(res: dict) -> None:
         print(f"  !! {warning}")
     print()
 
+def print_step_compensation(res: dict, model: RobotModel, step_path: Path) -> None:
+    """在本动作取整后的时长上补阶跃响应的净动态损失 net_lag_ms（与 r、B 无关）。
+
+    转角补偿 dt = (vR*dR - vL*dL) / (vR - vL)，路程补偿 dt = (vR*dR + vL*dL) / (vR + vL)，
+    vL、vR 为带符号的稳态 counts/s，dL、dR 为左右轮净损失 (ms)。
+    原地转只用转角补偿，直线只用路程补偿，圆弧两者不同，按要保证的量选一个。
+    """
+    step = json.loads(step_path.read_text(encoding="utf-8"))
+    dl = step["pooled"]["wheels"]["L"]["net_lag_ms"]["mean"]
+    dr = step["pooled"]["wheels"]["R"]["net_lag_ms"]["mean"]
+    vl = model.pwm_to_counts_per_sec("left", res["pwm_left"])
+    vr = model.pwm_to_counts_per_sec("right", res["pwm_right"])
+    mean_speed = 0.5 * (abs(vl) + abs(vr))
+    print(f"  阶跃补偿（净损失 左 {dl:.1f} ms, 右 {dr:.1f} ms）:")
+    # 两轮速差太小（直线）不算转角补偿，两轮速和太小（原地转）不算路程补偿
+    if abs(vr - vl) > 0.05 * mean_speed:
+        dt = (vr * dr - vl * dl) / (vr - vl)
+        total = align_duration_ms(res["duration_ms"] + dt, model.dt_ms)
+        print(
+            f"    转角补偿 +{dt:.1f} ms -> runTimedPwm(robot, now, "
+            f"{res['pwm_left']}, {res['pwm_right']}, {total});"
+        )
+    if abs(vr + vl) > 0.05 * mean_speed:
+        dt = (vr * dr + vl * dl) / (vr + vl)
+        total = align_duration_ms(res["duration_ms"] + dt, model.dt_ms)
+        print(
+            f"    路程补偿 +{dt:.1f} ms -> runTimedPwm(robot, now, "
+            f"{res['pwm_left']}, {res['pwm_right']}, {total});"
+        )
+    print()
+
 
 def build_parser() -> argparse.ArgumentParser:
     common = argparse.ArgumentParser(add_help=False)
@@ -423,6 +455,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     common.add_argument(
         "--reverse-fit", type=Path, default=DEFAULT_REV_FIT, help="反转 fit.json 路径"
+    )
+    common.add_argument(
+        "--step-comp", action="store_true", help="按阶跃响应净动态损失补偿时长"
+    )
+    common.add_argument(
+        "--step-results",
+        type=Path,
+        default=DEFAULT_STEP_RESULTS,
+        help="阶跃响应 results.json 路径",
     )
 
     parser = argparse.ArgumentParser(
@@ -516,13 +557,18 @@ def main() -> None:
 
     print_derived_linear_model(model)
 
+    def show(res: dict) -> None:
+        print_result(res)
+        if args.step_comp:
+            print_step_compensation(res, model, args.step_results)
+
     cmd = args.cmd or "all"
     if cmd == "arc":
-        print_result(compute_arc(model, args.radius, args.angle, args.speed))
+        show(compute_arc(model, args.radius, args.angle, args.speed))
     elif cmd == "straight":
-        print_result(compute_straight(model, args.distance, args.speed))
+        show(compute_straight(model, args.distance, args.speed))
     elif cmd == "turn":
-        print_result(compute_turn(model, args.angle, args.wheel_speed))
+        show(compute_turn(model, args.angle, args.wheel_speed))
     else:
         straight_dist = getattr(args, "straight_dist", 350.0)
         straight_speed = getattr(args, "straight_speed", 180.0)
@@ -538,7 +584,7 @@ def main() -> None:
             compute_arc(model, arc_radius, -90.0, arc_speed),
         ]
         for res in results:
-            print_result(res)
+            show(res)
 
 
 if __name__ == "__main__":
