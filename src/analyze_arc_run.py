@@ -199,7 +199,6 @@ def compute_odometry_from_csv(
 
     t0 = sig1[0][0]
     encL0, encR0 = sig1[0][6], sig1[0][7]
-    final = sig1[-1]
 
     moving = [r for r in sig1 if r[4] != 0 or r[5] != 0]
     if not moving:
@@ -209,6 +208,11 @@ def compute_odometry_from_csv(
     pwmR_cmd = int(round(moving[0][5]))
     t_move_start = moving[0][0]
     t_move_end = moving[-1][0]
+
+    # 取停车后 1500 ms 处（仍在 2000 ms 静置观察窗内、滑行早已结束且尚未搬动小车），
+    # 避免录数未及时停止时搬车触碰车轮污染末帧。
+    settled_candidates = [r for r in sig1 if r[0] >= t_move_end + 1500.0]
+    final = settled_candidates[0] if settled_candidates else sig1[-1]
 
     dL_final = (final[6] - encL0) * model.mm_per_count_left
     dR_final = (final[7] - encR0) * model.mm_per_count_right
@@ -366,12 +370,12 @@ def analyze_single_run(
         "err_ext_ideal": compute_pose_error(ext, ideal) if ext else None,
     }
 
-    # 单次反推等效几何参数（假设无打滑时的参考值）：
-    #   B_eff_est = B * (theta_odom / theta_ext)
+    # 单次反推等效几何参数（假设无打滑时的参考值，直接用编码器轮行程差与实测转角/弧长，不依赖旧固件B）：
+    #   B_eff_est = (dR - dL) / theta_ext
     #   r_eff_est = r * (s_ext / s_odom)
     if odom and ext and abs(ext["theta_rad"]) > 1e-6 and abs(odom["arc_length"]) > 1e-6:
         r_nom = 0.5 * (model.r_left_mm + model.r_right_mm)
-        result["B_eff_est"] = model.wheel_separation_mm * (odom["theta_rad"] / ext["theta_rad"])
+        result["B_eff_est"] = (odom["dR"] - odom["dL"]) / ext["theta_rad"]
         result["r_eff_est"] = r_nom * (ext["arc_length"] / odom["arc_length"])
     else:
         result["B_eff_est"] = None
