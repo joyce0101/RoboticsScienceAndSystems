@@ -150,12 +150,14 @@ void Controller_c::updateMotion(Robot_c &robot, unsigned long now) {
       runTimedPwm(robot, uint32_t(now), 58, 57, 1940);
       break;
     case MotionStep::TURN_LEFT:
-      runTimedPwm(robot, uint32_t(now), -41, 40, 1250);  // 180° 第1组 B=90 r=16
-      // runTimedPwm(robot, uint32_t(now), -41, 40, 1160);  // 180° 第2组 B=85.8 r=16.36
+      // runTimedPwm(robot, uint32_t(now), -41, 40, 1250);  // 180° 第1组 B=90 r=16
+      runTimedPwm(robot, uint32_t(now), -41, 40, 1160);  // 180° 第2组 B=85.8 r=16.36
+      // runTimedPwm(robot, uint32_t(now), -41, 40, 1220);  // 180° 第3组 B=85.8 r=16.36 +阶跃响应
       break;
     case MotionStep::TURN_RIGHT:
-      runTimedPwm(robot, uint32_t(now), 40, -39, 1270);  // 180° 第1组 B=90 r=16
-      // runTimedPwm(robot, uint32_t(now), 40, -39, 1180);  // 180° 第2组 B=85.8 r=16.36
+      // runTimedPwm(robot, uint32_t(now), 40, -39, 1270);  // 180° 第1组 B=90 r=16
+      runTimedPwm(robot, uint32_t(now), 40, -39, 1180);  // 180° 第2组 B=85.8 r=16.36
+      // runTimedPwm(robot, uint32_t(now), 40, -39, 1240);  // 180° 第3组 B=85.8 r=16.36 +阶跃响应
       break;
     case MotionStep::ARC_LEFT:
       runTimedPwm(robot, uint32_t(now), 48, 68, 1730);
