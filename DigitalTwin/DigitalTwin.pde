@@ -31,11 +31,16 @@ void setup() {
   //surface.setLocation(0, 0);
   surface.setTitle("CW2026 Digital Twin");
   simulator = new Simulator(this, SURFACE_OFFSET_X_MM, SURFACE_OFFSET_Y_MM);
-  // 左右轮分别用悬空实测拟合（mm/s），有效范围PWM 40–140
-  simulator.robot.motors.left.gainMmPerS = 3.603033;
-  simulator.robot.motors.left.interceptMmPerS = -14.525098;
-  simulator.robot.motors.right.gainMmPerS = 3.817527;
-  simulator.robot.motors.right.interceptMmPerS = -9.928359;
+  // 左右轮正/反转稳态拟合（counts/s = k * (|PWM| - p0)），来自 data/forward_steady 与 data/reverse_steady
+  // 实测有效区间 |PWM| 35–80，轮径由 Robot_c(16.0, ...) 通过 odometry.mmPerEncoderCount 统一换算
+  simulator.robot.motors.left.fwdCountsPerPwm = 13.8064;
+  simulator.robot.motors.left.fwdDeadZonePwm = 11.43;
+  simulator.robot.motors.right.fwdCountsPerPwm = 13.9665;
+  simulator.robot.motors.right.fwdDeadZonePwm = 10.96;
+  simulator.robot.motors.left.revCountsPerPwm = 13.8813;
+  simulator.robot.motors.left.revDeadZonePwm = 11.99;
+  simulator.robot.motors.right.revCountsPerPwm = 13.9134;
+  simulator.robot.motors.right.revDeadZonePwm = 10.34;
   
 }
 

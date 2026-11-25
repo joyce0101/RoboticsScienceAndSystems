@@ -90,7 +90,7 @@ class Robot_c {
    * @param dtMs Fixed simulation step in milliseconds.
    */
   void updatePhysics(int dtMs) {
-    motors.update();
+    motors.update(odometry.mmPerEncoderCount);
     float leftDistance = motors.left.speedMmPerMs * dtMs;
     float rightDistance = motors.right.speedMmPerMs * dtMs;
     odometry.update(leftDistance, rightDistance, wheelSeparationMm);
