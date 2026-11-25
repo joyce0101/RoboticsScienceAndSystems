@@ -22,6 +22,11 @@ class Controller_c {
   TaskTimer_c update_timer = new TaskTimer_c( UPDATE_INTERVAL_MS );
   TaskTimer_c telemetry_timer = new TaskTimer_c( TELEMETRY_INTERVAL_MS );
 
+  // 和StampC3一样，创建时先调用reset()，让reset()里选的动作生效
+  Controller_c() {
+    reset();
+  }
+  
   /** @brief Returns the controller to its inactive waiting state. */
   void reset() {
     signal = 0;
