@@ -1,0 +1,29 @@
+{
+  "model": "v = k * (PWM - p0), v in counts/s (encoder)",
+  "unit": "counts/s",
+  "mm_per_count_nominal": 0.2805776302396689,
+  "fits": {
+    "left": {
+      "k_per_pwm": 13.8064,
+      "dead_zone_p0": 11.43,
+      "r2": 0.9994,
+      "rms_residual": 4.93,
+      "n_points": 34,
+      "pwm_range_measured": [
+        35.0,
+        80.0
+      ]
+    },
+    "right": {
+      "k_per_pwm": 13.9665,
+      "dead_zone_p0": 10.96,
+      "r2": 0.9991,
+      "rms_residual": 6.1,
+      "n_points": 34,
+      "pwm_range_measured": [
+        34.0,
+        80.0
+      ]
+    }
+  }
+}

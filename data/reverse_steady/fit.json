@@ -1,0 +1,31 @@
+{
+  "model": "v = k * (PWM - p0), v in counts/s (encoder)",
+  "unit": "counts/s",
+  "direction": "reverse",
+  "note": "reverse: PWM and v are magnitudes; actual command is -PWM and rate is -v",
+  "mm_per_count_nominal": 0.2805776302396689,
+  "fits": {
+    "left": {
+      "k_per_pwm": 13.8813,
+      "dead_zone_p0": 11.99,
+      "r2": 0.9996,
+      "rms_residual": 4.38,
+      "n_points": 10,
+      "pwm_range_measured": [
+        35.0,
+        80.0
+      ]
+    },
+    "right": {
+      "k_per_pwm": 13.9134,
+      "dead_zone_p0": 10.34,
+      "r2": 0.9998,
+      "rms_residual": 3.42,
+      "n_points": 10,
+      "pwm_range_measured": [
+        35.0,
+        80.0
+      ]
+    }
+  }
+}

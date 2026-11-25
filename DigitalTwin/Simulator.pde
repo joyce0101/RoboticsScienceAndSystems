@@ -52,9 +52,9 @@ class Simulator {
   TCPTelemetry_c armedPose = new TCPTelemetry_c();
   TCPTelemetry_c ghost = new TCPTelemetry_c();
   ArrayList<TCPTelemetry_c> tcpQueue = new ArrayList<TCPTelemetry_c>();
-  float zoom = 1.0;
-  float viewCentreX = 0.0;
-  float viewCentreY = 0.0;
+  float zoom = 1.3;
+  float viewCentreX = 190.0;
+  float viewCentreY = 110.0;
 
   int lastGraphSampleMs = 0;
   int lastSimulationUpdateMs = 0;
@@ -224,7 +224,12 @@ class Simulator {
       - surfaceImage.width / 2.0;
     float worldY = surfaceOffsetY + surfaceImage.height / 2.0
       - (surfaceCacheY + surfaceCacheHeight / 2.0);
-    image(surfaceViewportCache, worldX, worldY);
+    // Cancel the outer scale(zoom, -zoom) vertically so image top maps to +y.
+    pushMatrix();
+    translate(worldX, worldY);
+    scale(1, -1);
+    image(surfaceViewportCache, 0, 0);
+    popMatrix();
   }
 
   void drawGhost() {
@@ -399,7 +404,9 @@ class Simulator {
    * @return A 1 pixel/mm surface image positioned using the configured offset.
    */
   PImage loadSurfaceImage() {
-    PImage image = loadImage("surface.png");
+    PImage image = loadImage("grid_surface.png");
+    if (image != null && image.width > 0 && image.height > 0) return image;
+    image = loadImage("surface.png");
     if (image != null && image.width > 0 && image.height > 0) return image;
 
     // A3 landscape is 420 x 297 mm. At 1 px/mm this generated test surface

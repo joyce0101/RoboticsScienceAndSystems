@@ -285,10 +285,17 @@ bool Robot_c::setupLED() {
   LED_rOffset = (0x12 >> 4) & 0x03;
   LED_gOffset = (0x12 >> 2) & 0x03;
   LED_bOffset = 0x12 & 0x03;
-  rmt_reserve_memsize_t rmt_mem = RMT_MEM_NUM_BLOCKS_1;
-  if (rmtInit(2, RMT_TX_MODE, rmt_mem, 10000000) == false) {
+#if ESP_ARDUINO_VERSION_MAJOR == 2
+  led_rmt = rmtInit(2, RMT_TX_MODE, RMT_MEM_64);
+  if (led_rmt == nullptr) {
     return false;
   }
+  rmtSetTick(led_rmt, 100.0f);  // 100 ns per tick, equivalent to 10 MHz.
+#else
+  if (!rmtInit(2, RMT_TX_MODE, RMT_MEM_NUM_BLOCKS_1, 10000000)) {
+    return false;
+  }
+#endif
 
   for (int i = 0; i < 24; i++) {
     led_data[i].level0 = 1;
@@ -302,5 +309,10 @@ bool Robot_c::setupLED() {
 }
 
 esp_err_t Robot_c::updateLED() {
-  return rmtWrite(2, led_data, 24, RMT_WAIT_FOR_EVER);
+#if ESP_ARDUINO_VERSION_MAJOR == 2
+  if (led_rmt == nullptr) return ESP_ERR_INVALID_STATE;
+  return rmtWriteBlocking(led_rmt, led_data, 24) ? ESP_OK : ESP_FAIL;
+#else
+  return rmtWrite(2, led_data, 24, RMT_WAIT_FOR_EVER) ? ESP_OK : ESP_FAIL;
+#endif
 }

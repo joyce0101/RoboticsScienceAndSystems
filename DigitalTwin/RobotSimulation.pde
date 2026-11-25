@@ -41,7 +41,7 @@ class Robot_c {
     sensors[2] = new SurfaceSensorModel_c("DN3", 45, 0);
     sensors[3] = new SurfaceSensorModel_c("DN4", 45, -14);
     sensors[4] = new SurfaceSensorModel_c("DN5", 45, -45);
-    odometry.reset(0.0,0.0, -PI/2.0, 0.0, 0.0);
+    odometry.reset(0.0, 0.0, 0.0, 0.0, 0.0);
   }
 
   /** @return Current simulated time in milliseconds. */

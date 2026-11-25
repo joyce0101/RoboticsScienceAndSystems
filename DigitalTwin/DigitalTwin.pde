@@ -7,9 +7,9 @@ final int WINDOW_WIDTH = 1000;
 /** @brief Initial application-window height in screen pixels. */
 final int WINDOW_HEIGHT = 800;
 /** @brief Initial surface-image x offset from the world origin, in mm. */
-final float SURFACE_OFFSET_X_MM = 135.0;
+final float SURFACE_OFFSET_X_MM = 190.0;
 /** @brief Initial surface-image y offset from the world origin, in mm. */
-final float SURFACE_OFFSET_Y_MM = 0.0;
+final float SURFACE_OFFSET_Y_MM = 110.0;
 
 /** @brief Application-level owner of the simulated robot and UI. */
 Simulator simulator;

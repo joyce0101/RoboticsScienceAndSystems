@@ -244,6 +244,9 @@ class Robot_c {
     uint8_t LED_gOffset;
     uint8_t LED_bOffset;
     rmt_data_t led_data[24];
+#if ESP_ARDUINO_VERSION_MAJOR == 2
+    rmt_obj_t* led_rmt = nullptr;
+#endif
 
     /** @brief Selects one middleware register and verifies its acknowledgement. */
     bool selectRegister(RobotRegister_t request);

@@ -14,7 +14,7 @@ class Controller_c {
   final int PHASE_WAITING = 0, PHASE_RUNNING = 1, PHASE_SETTLING = 2, PHASE_DONE = 3;
   final int STRAIGHT_FWD = 0, TURN_LEFT = 1, TURN_RIGHT = 2, ARC_LEFT = 3, ARC_RIGHT = 4;
   int phase = PHASE_WAITING;
-  int motionStep = STRAIGHT_FWD;
+  int motionStep = ARC_LEFT;
   boolean routeStarted = false;
   long routeStartMs = 0, motionStartMs = 0, settlingStartMs = 0;
 
@@ -26,7 +26,7 @@ class Controller_c {
   void reset() {
     signal = 0;
     // 每次试验只改这一行，选这次跑哪个动作
-    motionStep = STRAIGHT_FWD;
+    motionStep = ARC_LEFT;
     phase = PHASE_WAITING;
     routeStarted = false;
     routeStartMs = 0;

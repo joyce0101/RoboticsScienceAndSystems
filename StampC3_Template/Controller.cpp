@@ -23,7 +23,7 @@ void Controller_c::reset() {
   speed_initialised = false;
   if (!actionActive) {
     // 每次试验只改这一行，选这次跑哪个动作
-    motionStep = MotionStep::STRAIGHT_FWD;
+    motionStep = MotionStep::ARC_LEFT;
     experimentPhase = ExperimentPhase::WAITING;
     motionStartMs = settlingStartMs = routeStartMs = 0;
     motionBaselineInitialized = false;
