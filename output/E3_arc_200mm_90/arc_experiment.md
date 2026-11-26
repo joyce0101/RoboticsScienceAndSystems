@@ -6,44 +6,48 @@
 
 ## 1. 分析脚本与数据索引（Evidence & Reproducibility）
 
-### 1.1 使用到的核心脚本
-| 脚本路径 | 用途 | 备注 |
+### 1.1 使用到的核心脚本与本目录产物
+| 路径 | 用途 | 备注 |
 |---|---|---|
-| [`src/calc_motion_params.py`](src/calc_motion_params.py) | 读取 `data/` 中正/反转 `counts/s`–`PWM` 稳态拟合，按给定 $(r, B, R, \Delta\theta, v)$ 离线计算整数 `PWM`、10 ms 对齐时长与离散仿真终点 | 改 `--r` / `--B` 自动重算 |
-| [`src/analyze_arc_run.py`](src/analyze_arc_run.py) | 圆弧三方对比与批量汇总脚本：计算 `simulation`、`real_odometry`、`external_pose`、三组误差（`odom-sim` / `ext-odom` / `ext-sim`）、正交分解（$e_{\text{along}}, e_{\text{cross}}$）、稳态轮速校验与等效几何反推 | 已内置 `+1500 ms` 静置帧截取，自动排除停稳后搬车碰转车轮的末帧污染 |
-| [`src/fit_step_response.py`](src/fit_step_response.py) | 10 ms 阶跃响应与停车滑行拟合脚本（FOPDT、纯一阶与行程等效 $\tau_{\text{up,eq}} / \tau_{\text{coast,eq}}$） | 用于辅助评估启停瞬态动态 |
+| [`output/E3_arc_200mm_90/analyse.py`](analyse.py) | 本目录一键汇总与绘图脚本：遍历全部 7 批 E3 数据（35 次试次），输出结构化 [`results.json`](results.json) 与矢量对比图 [`fig_endpoints.svg`](fig_endpoints.svg) / [`fig_error_evolution.svg`](fig_error_evolution.svg) | 纯 Python 标准库，调用 `src/analyze_arc_run.py` 核心函数 |
+| [`src/calc_motion_params.py`](../../src/calc_motion_params.py) | 读取 `data/` 中正/反转 `counts/s`–`PWM` 稳态拟合，按给定 $(r, B, R, \Delta\theta, v)$ 离线计算整数 `PWM`、10 ms 对齐时长、离散仿真终点及 `--step-comp` 阶跃补偿 | 改 `--r` / `--B` 自动重算 |
+| [`src/analyze_arc_run.py`](../../src/analyze_arc_run.py) | 圆弧三方对比与单批汇总脚本：计算 `simulation`、`real_odometry`、`external_pose`、三组误差（`odom-sim` / `ext-odom` / `ext-sim`）、正交分解（$e_{\text{along}}, e_{\text{cross}}$）、稳态轮速校验与等效几何反推 | 已内置 `+1500 ms` 静置帧截取，自动排除停稳后搬车碰转车轮的末帧污染 |
+| [`src/fit_step_response.py`](../../src/fit_step_response.py) | 10 ms 阶跃响应与停车滑行拟合脚本（FOPDT、纯一阶与行程等效 $\tau_{\text{up,eq}} / \tau_{\text{coast,eq}}$） | 用于辅助评估启停瞬态动态 |
 
 ### 1.2 原始数据与模型文件
 - **电机稳态拟合（E0 标定输入，未参与圆弧调参）**：
-  - [`data/forward_steady/fit.json`](data/forward_steady/fit.json)（左 $13.8064(\text{PWM}-11.43)$，右 $13.9665(\text{PWM}-10.96)$ counts/s）
-  - [`data/reverse_steady/fit.json`](data/reverse_steady/fit.json)
+  - [`data/forward_steady/fit.json`](../../data/forward_steady/fit.json)（左 $13.8064(\text{PWM}-11.43)$，右 $13.9665(\text{PWM}-10.96)$ counts/s）
+  - [`data/reverse_steady/fit.json`](../../data/reverse_steady/fit.json)
 - **E0 独立几何标定参数**：有效轮距 $B_{\text{eff}} = 85.8\text{ mm}$（E0-4 原地旋转标定）、有效轮径 $r_{\text{eff}} = 16.36 \pm 0.20\text{ mm}$（E0-3 直行标定）。
 - **左弧第一批（`B = 90.0 mm, r = 16.0 mm`, $n = 5$）**：
   - 遥测原始 CSV：`logs/E3_arc_left_run1.csv` – `logs/E3_arc_left_run5.csv`
-  - 坐标纸外部读数：[`logs/E3_arc_external.csv`](logs/E3_arc_external.csv)
+  - 坐标纸外部读数：[`logs/E3_arc_external.csv`](../../logs/E3_arc_external.csv)
 - **左弧第二批（实机固件改 `OdometryModel.h` 中 `B = 85.8 mm`, $n = 5$）**：
   - 遥测原始 CSV：`logs/E3_arc_left_B85.8_run1.csv` – `logs/E3_arc_left_B85.8_run5.csv`
-  - 坐标纸外部读数：[`logs/E3_arc_left_B85.8_external.csv`](logs/E3_arc_left_B85.8_external.csv)
-- **右弧批次（`B = 90.0 mm, r = 16.0 mm`, $n = 5$）**：
+  - 坐标纸外部读数：[`logs/E3_arc_left_B85.8_external.csv`](../../logs/E3_arc_left_B85.8_external.csv)
+- **右弧第一批（`B = 90.0 mm, r = 16.0 mm`, $n = 5$）**：
   - 遥测原始 CSV：`logs/E3_arc_ringht_run1.csv` – `logs/E3_arc_ringht_run5.csv`
-  - 坐标纸外部读数：[`logs/E3_arc_right_external.csv`](logs/E3_arc_right_external.csv)
+  - 坐标纸外部读数：[`logs/E3_arc_right_external.csv`](../../logs/E3_arc_right_external.csv)
 - **左弧第三批（全校准 `B = 85.8 mm, r = 16.36 mm` + 重算控制量 `(50, 70, 1610 ms)`, $n = 5$）**：
   - 遥测原始 CSV：`logs/E3_arc_left_B85.8_r16.36_run1.csv` – `logs/E3_arc_left_B85.8_r16.36_run5.csv`
-  - 坐标纸外部读数：[`logs/E3_arc_left_B85.8_r16.36_external.csv`](logs/E3_arc_left_B85.8_r16.36_external.csv)
+  - 坐标纸外部读数：[`logs/E3_arc_left_B85.8_r16.36_external.csv`](../../logs/E3_arc_left_B85.8_r16.36_external.csv)
 - **右弧第二批（全校准 `B = 85.8 mm, r = 16.36 mm` + 重算控制量 `(71, 49, 1610 ms)`, $n = 5$）**：
   - 遥测原始 CSV：`logs/E3_arc_right_B85.8_r16.36_run1.csv` – `logs/E3_arc_right_B85.8_r16.36_run5.csv`
-  - 坐标纸外部读数：[`logs/E3_arc_right_B85.8_r16.36_external.csv`](logs/E3_arc_right_B85.8_r16.36_external.csv)
+  - 坐标纸外部读数：[`logs/E3_arc_right_B85.8_r16.36_external.csv`](../../logs/E3_arc_right_B85.8_r16.36_external.csv)
 - **左弧第四批（全校准 + 阶跃响应转角补偿 `(50, 70, 1660 ms)`, $n = 5$）**：
   - 遥测原始 CSV：`logs/E3_arc_left_B85.8_r16.36_step_run1.csv` – `logs/E3_arc_left_B85.8_r16.36_step_run5.csv`
-  - 坐标纸外部读数：[`logs/E3_arc_left_B85.8_r16.36_step_external.csv`](logs/E3_arc_left_B85.8_r16.36_step_external.csv)
+  - 坐标纸外部读数：[`logs/E3_arc_left_B85.8_r16.36_step_external.csv`](../../logs/E3_arc_left_B85.8_r16.36_step_external.csv)
 - **右弧第三批（全校准 + 阶跃响应转角补偿 `(71, 49, 1690 ms)`, $n = 5$）**：
   - 遥测原始 CSV：`logs/E3_arc_right_B85.8_r16.36_step_run1.csv` – `logs/E3_arc_right_B85.8_r16.36_step_run5.csv`
-  - 坐标纸外部读数：[`logs/E3_arc_right_B85.8_r16.36_step_external.csv`](logs/E3_arc_right_B85.8_r16.36_step_external.csv)
+  - 坐标纸外部读数：[`logs/E3_arc_right_B85.8_r16.36_step_external.csv`](../../logs/E3_arc_right_B85.8_r16.36_step_external.csv)
 - **公用小车阶跃响应与滑行标定汇总**：
-  - [`output/step_response_shared/results.json`](output/step_response_shared/results.json) / [`output/step_response_shared/report.md`](output/step_response_shared/report.md)（合并净动态损失：左 `66.5 ms`、右 `59.5 ms`）
+  - [`output/step_response_shared/results.json`](../step_response_shared/results.json) / [`output/step_response_shared/report.md`](../step_response_shared/report.md)（合并净动态损失：左 `66.5 ms`、右 `59.5 ms`）
 
-### 1.3 一键复现命令
+### 1.3 一键复现命令（仓库根目录运行）
 ```bash
+# 0. 一键重跑全部 7 批汇总并重绘图表（生成 results.json, fig_endpoints.svg, fig_error_evolution.svg）
+python3 output/E3_arc_200mm_90/analyse.py
+
 # 1. 左弧第一批（B=90.0, r=16.0, PWM=(48,68), T=1730 ms）
 python3 src/analyze_arc_run.py --batch logs/E3_arc_external.csv \
   --pwm-left 48 --pwm-right 68 --duration-ms 1730 --B 90.0 --r 16.0
@@ -82,7 +86,7 @@ python3 src/calc_motion_params.py arc --radius 200 --angle -90 --speed 195 --ste
 
 ## 2. 实验设置与冻结控制输入
 
-两端代码（[`StampC3_Template/Controller.cpp`](StampC3_Template/Controller.cpp) 与 [`DigitalTwin/Controller.pde`](DigitalTwin/Controller.pde)）执行完全相同的开环定时 PWM（`runTimedPwm`），每次试次包含 `1000 ms` 启动前静止基线、`1730 ms` 恒定 PWM 驱动与 `2000 ms` 停车滑行记录：
+两端代码（[`StampC3_Template/Controller.cpp`](../../StampC3_Template/Controller.cpp) 与 [`DigitalTwin/Controller.pde`](../../DigitalTwin/Controller.pde)）执行完全相同的开环定时 PWM（`runTimedPwm`），每次试次包含 `1000 ms` 启动前静止基线、`1730 ms`（第 1 代）/ `1610 ms`（第 2 代）/ `1660–1690 ms`（第 3 代）恒定 PWM 驱动与 `2000 ms` 停车滑行记录：
 
 | 动作 | 起点世界位姿 | 左右 PWM (`L / R`) | 驱动时长 | 名义中心速度 ($r=16$) | 理想终点（局部系） |
 |---|---|---:|---:|---:|---|
@@ -113,7 +117,7 @@ $$R_{\text{ext}} = \frac{x_{\text{loc}}^2 + y_{\text{loc}}^2}{2|y_{\text{loc}}|}
 
 ### 3.2 实机固件更新 `B = 90.0 → 85.8 mm` 对左弧机载里程计的直接改善
 
-在保持左弧开环控制输入 `(48, 68, 1730 ms)` 完全不变、仅把 [`StampC3_Template/OdometryModel.h`](StampC3_Template/OdometryModel.h) 和 [`DigitalTwin/Simulator.pde`](DigitalTwin/Simulator.pde) 的轮距改为 E0 独立标定值 `85.8 mm` 后，重测 5 次左弧：
+在保持左弧开环控制输入 `(48, 68, 1730 ms)` 完全不变、仅把 [`StampC3_Template/OdometryModel.h`](../../StampC3_Template/OdometryModel.h) 和 [`DigitalTwin/Simulator.pde`](../../DigitalTwin/Simulator.pde) 的轮距改为 E0 独立标定值 `85.8 mm` 后，重测 5 次左弧：
 
 | 指标（左弧, $n=5$） | 修改前（`B = 90.0 mm`） | 修改后（`B = 85.8 mm`） | 变化 |
 |---|---|---|---|
@@ -150,7 +154,7 @@ $$R_{\text{ext}} = \frac{x_{\text{loc}}^2 + y_{\text{loc}}^2}{2|y_{\text{loc}}|}
 
 ## 5. 第 5 步 Sim-to-Real 独立闭环验证（校准模型重算控制输入，$n = 5 + 5 = 10$）
 
-在冻结 E0 独立标定几何（`r = 16.36 mm, B = 85.8 mm`，同步配置于 [`StampC3_Template/OdometryModel.h`](StampC3_Template/OdometryModel.h) 与 [`DigitalTwin/Simulator.pde`](DigitalTwin/Simulator.pde)）后，用 [`src/calc_motion_params.py`](src/calc_motion_params.py) 在中心速度 $v = 195\text{ mm/s}$ 处重新规划目标为精确 $R = 200\text{ mm}, \pm 90^\circ$ 的新开环控制输入（`ARC_LEFT: (50, 70, 1610 ms)`，$R_{\text{act}} = 199.33\text{ mm}$；`ARC_RIGHT: (71, 49, 1610 ms)`，$R_{\text{act}} = 199.46\text{ mm}$），并在真机各独立复测 5 次（10 次运行均无末帧搬车碰轮污染，`EOF_delta = (0, 0)`）。
+在冻结 E0 独立标定几何（`r = 16.36 mm, B = 85.8 mm`，同步配置于 [`StampC3_Template/OdometryModel.h`](../../StampC3_Template/OdometryModel.h) 与 [`DigitalTwin/Simulator.pde`](../../DigitalTwin/Simulator.pde)）后，用 [`src/calc_motion_params.py`](../../src/calc_motion_params.py) 在中心速度 $v = 195\text{ mm/s}$ 处重新规划目标为精确 $R = 200\text{ mm}, \pm 90^\circ$ 的新开环控制输入（`ARC_LEFT: (50, 70, 1610 ms)`，$R_{\text{act}} = 199.33\text{ mm}$；`ARC_RIGHT: (71, 49, 1610 ms)`，$R_{\text{act}} = 199.46\text{ mm}$），并在真机各独立复测 5 次（10 次运行均无末帧搬车碰轮污染，`EOF_delta = (0, 0)`）。
 
 ### 5.1 校准前后真机闭环精度对比（均值 $\pm$ SD）
 
@@ -182,13 +186,13 @@ $$R_{\text{ext}} = \frac{x_{\text{loc}}^2 + y_{\text{loc}}^2}{2|y_{\text{loc}}|}
 校准闭环后，两侧均只剩极小的对称“欠行程”（左弧 `+88.77°` 少 `1.2°` / 弧长少 `13.5 mm`，右弧 Run 1–4 `-88.87°` 少 `1.1°` / 弧长少 `7.5 mm`），精确分解为两部分：
 1. **启停瞬态净滞后（`odom − sim`）**：左弧中段稳态轮速与 `fit.json` 误差仅 `-0.19% / -0.31%`，但编码器总脉冲比无惯性阶跃仿真少 `-23.6 / -30.8 counts`（等效时间亏损 `-44.4 / -37.5 ms`），导致 `odom − sim` 偏短约 `6–8 mm`；
 2. **弯道等效轮径 / 微小打滑（`ext − odom`）**：两侧机载里程计朝向几乎零偏差（`+0.11°` / `-0.02°`），残余 `~6.0 mm` 呈纯各向同性 `-1.2% ~ -1.8%` 比例收缩（`r_eff ≈ 16.06–16.17 mm`，位于 E0-3 `16.36 ± 0.20 mm` 标定不确定度内，并可能叠加 `~195 mm/s` 紧弯下的轻微纵向滑移）。
-3. **现成阶跃响应补偿参数**：[`src/calc_motion_params.py`](src/calc_motion_params.py) 已接入 [`output/step_response_shared/results.json`](output/step_response_shared/results.json)（净损失左 `66.5 ms`、右 `59.5 ms`），给出进一步补偿瞬态欠行程的候选指令（不改 PWM）：
+3. **现成阶跃响应补偿参数**：[`src/calc_motion_params.py`](../../src/calc_motion_params.py) 已接入 [`output/step_response_shared/results.json`](../step_response_shared/results.json)（净损失左 `66.5 ms`、右 `59.5 ms`），给出进一步补偿瞬态欠行程的候选指令（不改 PWM）：
    - `ARC_LEFT`: 转角补偿 `runTimedPwm(robot, now, 50, 70, 1660)` / 路程补偿 `1670`
    - `ARC_RIGHT`: 路程补偿 `runTimedPwm(robot, now, 71, 49, 1670)` / 转角补偿 `1690`
 
 ### 5.4 第 3 代对照实验：叠加阶跃响应统一转角补偿（`1660 / 1690 ms`, $n = 5 + 5 = 10$）
 
-为保证左右方向评估准则一致（避免按方向挑参），两端统一采用 [`src/calc_motion_params.py`](src/calc_motion_params.py) `--step-comp` 输出的**转角补偿**方案 A（`ARC_LEFT: (50, 70, 1660 ms)`、`ARC_RIGHT: (71, 49, 1690 ms)`，均基于 `PWM 51–58` 测得的合并净损失左 `66.54 ms` / 右 `59.49 ms`），再各独立复测 5 次（10 次均无碰轮污染，`EOF_delta = (0, 0)`，车长自检左 `93.07±0.36 mm`、右 `93.43±0.47 mm`）：
+为保证左右方向评估准则一致（避免按方向挑参），两端统一采用 [`src/calc_motion_params.py`](../../src/calc_motion_params.py) `--step-comp` 输出的**转角补偿**方案 A（`ARC_LEFT: (50, 70, 1660 ms)`、`ARC_RIGHT: (71, 49, 1690 ms)`，均基于 `PWM 51–58` 测得的合并净损失左 `66.54 ms` / 右 `59.49 ms`），再各独立复测 5 次（10 次均无碰轮污染，`EOF_delta = (0, 0)`，车长自检左 `93.07±0.36 mm`、右 `93.43±0.47 mm`）：
 
 | 指标（均值 $\pm$ SD） | 左弧第 1 代<br>名义 `1730` | 左弧第 2 代<br>几何 `1610` | **左弧第 3 代**<br>**+阶跃 `1660`** | 右弧第 1 代<br>名义 `1730` | 右弧第 2 代<br>几何 `1610` | **右弧第 3 代**<br>**+阶跃 `1690`** |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
@@ -198,6 +202,9 @@ $$R_{\text{ext}} = \frac{x_{\text{loc}}^2 + y_{\text{loc}}^2}{2|y_{\text{loc}}|}
 | 扣滞后模型预测误差 | — | — | **`2.56±1.81 mm, +1.87°`** | — | — | **`6.98±4.44 mm, -2.68°`** |
 | **里程计 `ext − odom`** | `17.47 mm, +6.79°` | `5.98 mm, +0.11°` | **`5.89±0.87 mm, +0.00±0.28°`** | `17.79 mm, -7.70°` | `6.04 mm, -0.02°` | **`5.39±0.64 mm, -0.98±0.81°`** |
 | 反推 $B_{\text{eff}} / r_{\text{eff}}$ | `83.64 / 16.29` | `85.70 / 16.06` | **`85.80±0.26 / 16.06±0.05`** | `82.87 / 16.23` | `85.88 / 16.17` | **`84.90±0.75 / 16.15±0.06`** |
+
+![E3 Arc Endpoints](fig_endpoints.svg)
+![E3 Error Evolution](fig_error_evolution.svg)
 
 **第 3 代对照实验揭示的关键物理洞见（高价值 Discussion 论据）**：
 1. **任务位置精度与几何一致性达到最优**：左弧相对理想点 `(200, 200)` 误差从第 1 代 `17.53 mm` → 第 2 代 `12.50 mm` → 第 3 代 **`4.97 mm`**（总降幅 **72%**，与扣滞后模型预测仅差 **`2.56 mm`**）；右弧等效半径精确收敛至 **`199.40 ± 3.32 mm`**（相对 `200 mm` 误差仅 **0.3%**），且两侧机载里程计朝向误差均 `< 1°`（左弧 **`+0.00°`**，反推 $B_{\text{eff}} = 85.80\text{ mm}$ 精确命中 E0 标定值）。
@@ -218,9 +225,9 @@ $$R_{\text{ext}} = \frac{x_{\text{loc}}^2 + y_{\text{loc}}^2}{2|y_{\text{loc}}|}
    - 从左弧原始编码器日志直接剥离出：稳态轮速与 `data/forward_steady/fit.json` 偏差仅 `-0.4% ~ -0.1%`，但**启动滞后大于停车滑行**造成编码器总弧长稳定比瞬时仿真少 **`7.20 ± 0.81 mm`**（`-2.28%`）。之前 `M2b (r=16.0)` 之所以 $y$ 坐标碰巧吻合，正是因为“轮径偏小（少算 `~7 mm`）”与“瞬时电机漏掉启动滞后（多算 `~7 mm`）”互相抵消所致；
    - 引入队友在公用小车上估算的一阶时间常数（`τ_up = 71/57 ms, τ_coast = 30 ms`）构成 `M4` 后，左弧预测误差进一步从 `9.85 mm` 收敛至 **`6.89 mm`（`-0.29°`）**。
 4. **不确定度分离与已知局限**
-   - **测量不确定度 vs 试次间波动**：15 次试验的前后标记间距自检 $|P_f - P_b| \approx 93.2\text{–}95.0\text{ mm}$（批内 SD `0.52–1.02 mm`），表明人工纸面读数精度约为 $\pm 1\text{ mm}$；而多次试次间的终点波动 SD 为 `1.7–3.3 mm` / `0.7–0.9°`，远小于名义模型误差（`19 mm / 6–7°`），说明所有核心结论均高度显著。
+   - **测量不确定度 vs 试次间波动**：全部试验的前后标记间距自检 $|P_f - P_b| \approx 93.1\text{–}95.0\text{ mm}$（批内 SD `0.36–1.02 mm`），表明人工纸面读数精度约为 $\pm 1\text{ mm}$；而多次试次间的终点波动 SD 远小于名义模型误差（`19 mm / 6–7°`），说明所有核心结论均高度显著。
    - **电池电压/热车状态波动**：右弧测试时稳态轮速比 `fit.json` 略偏快 `+1.2% / +2.2%`（左弧仅 `-0.4% ~ -0.1%`），抵消了右弧的大部分启动滞后，这解释了为何右弧 `M3` 位置误差单调降至 `6.67 mm`；属于需要在报告中重点讨论的不可完全固定扰动因素（nuisance variable）。
-   - **残余 `~4.5 mm` 偏差**：`M3` 校准后里程计与地面真值间仍存约 `4.5 mm`（约 `1–2%`）残余位置差，可能来自圆弧转弯时的轻微横向摩擦/有效接地轮距偏移以及起始摆位 $\pm 1^\circ$ 误差（属合理解释假设，尚待高速/不同地面实验进一步分离）。
+   - **残余 `~4.5–6.0 mm` 偏差**：`M3` 校准后里程计与地面真值间仍存约 `5–6 mm`（约 `1.2–1.8%`）残余位置差，呈各向同性比例收缩（`r_eff ≈ 16.06–16.17 mm`），位于 E0-3 标定不确定度内并叠加紧弯下轻微纵向打滑。
 
 ---
 
