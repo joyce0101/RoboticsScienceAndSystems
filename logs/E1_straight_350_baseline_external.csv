@@ -1,0 +1,6 @@
+run_id,csv_path,xf,yf,xb,yb
+E1_straight_350_run1,logs/E1_straight_350_run1.csv,394,-3,299,-1
+E1_straight_350_run2,logs/E1_straight_350_run2.csv,393,-2,299,-1
+E1_straight_350_run3,logs/E1_straight_350_run3.csv,387,-3,292,-2
+E1_straight_350_run4,logs/E1_straight_350_run4.csv,388,2,294,0
+E1_straight_350_run5,logs/E1_straight_350_run5.csv,397,-3,299,-2

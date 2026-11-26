@@ -1,0 +1,11 @@
+run_id,set,time,xf,yf,xb,yb,x_mm,y_mm,theta_deg,mark_spacing_mm,note
+E1_straight_350_A1,A,16:4x,398,-2,300,0,349.0,-1.0,-1.17,98.0,no odometry log (not captured)
+E1_straight_350_A2,A,16:4x,404,2,305,2,354.5,2.0,0.00,99.0,no odometry log (not captured)
+E1_straight_350_A3,A,16:4x,399,2,303,3,351.0,2.5,-0.60,96.0,no odometry log (not captured)
+E1_straight_350_A4,A,16:4x,401,0,305,0,353.0,0.0,0.00,96.0,no odometry log (not captured)
+E1_straight_350_A5,A,16:4x,397,4,304,3,350.5,3.5,0.62,93.0,no odometry log (not captured)
+E1_straight_350_B1,B,17:0x-17:1x,401,-3,305,0,353.0,-1.5,-1.79,96.0,no odometry log (not captured)
+E1_straight_350_B2,B,17:0x-17:1x,398,-3,303,-3,350.5,-3.0,0.00,95.0,no odometry log (not captured)
+E1_straight_350_B3,B,17:0x-17:1x,398,7,303,7,350.5,7.0,0.00,95.0,no odometry log (not captured)
+E1_straight_350_B4,B,17:0x-17:1x,400,-3,305,0,352.5,-1.5,-1.81,95.0,no odometry log (not captured)
+E1_straight_350_B5,B,17:0x-17:1x,398,-3,303,-1,350.5,-2.0,-1.21,95.0,no odometry log (not captured)
