@@ -1,0 +1,73 @@
+{
+  "sources": {
+    "device-monitor-261117-135711.log": "a10a6d85a45eca2cd75206704b9bf34b2165acc89b5e7199d01ac780b3074417",
+    "device-monitor-261117-145450.log": "9b684c812b9504231f0ed7650f7f238d16af1eeaa178b4a47e0b6f2a89f92fe6",
+    "device-monitor-261117-145718.log": "a974328f47cdd3c1ac3b688ef89f493e28df6a12153b96e48ee554ac48e905b9",
+    "device-monitor-261117-150056.log": "8b59b9964ed842f65cd95dd7d43e20fb050fd8b2c84ba54ffb01836cc046edad"
+  },
+  "outputs": {
+    "left_wheel_samples.csv": {
+      "rows": 977,
+      "columns": [
+        "wheel",
+        "pwm",
+        "trial",
+        "phase",
+        "phase_ms",
+        "speed_mm_s",
+        "source_file",
+        "source_line",
+        "use_for_steady_fit"
+      ]
+    },
+    "right_wheel_samples.csv": {
+      "rows": 975,
+      "columns": [
+        "wheel",
+        "pwm",
+        "trial",
+        "phase",
+        "phase_ms",
+        "speed_mm_s",
+        "source_file",
+        "source_line",
+        "use_for_steady_fit"
+      ]
+    },
+    "settled_trial_means.csv": {
+      "rows": 48,
+      "columns": [
+        "wheel",
+        "direction",
+        "PWM",
+        "trial_num",
+        "settled_speed_mm_s",
+        "sample_count",
+        "source_file"
+      ]
+    },
+    "motor_gain_colab.csv": {
+      "rows": 48,
+      "columns": [
+        "wheel",
+        "direction",
+        "PWM",
+        "trial_num",
+        "settled_speed_cps"
+      ]
+    }
+  },
+  "right180_trials_mm_s": [
+    675.5907142857143,
+    676.7099285714285,
+    676.9937142857143
+  ],
+  "right180_mean_mm_s": 676.4314523809524,
+  "conversion": {
+    "wheel_radius_mm": 16,
+    "counts_per_revolution": 358.3,
+    "cps_per_mm_s": 3.5640760068641315
+  },
+  "excluded_records": [],
+  "policy": "R180 complete triplicate now comes from the current device-monitor-261117-145718.log; values and trial selection unchanged."
+}
