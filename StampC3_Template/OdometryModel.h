@@ -32,7 +32,8 @@ class OdometryModel_c {
     Pose pose;
 
     /** @brief Nominal starting values, not measured calibration results. */
-    OdometryModel_c(float wheelRadiusMm = 16.0, float separationMm = 90.0, float countsPerRevolution = 358.3);
+    // OdometryModel_c(float wheelRadiusMm = 16.0, float separationMm = 90.0, float countsPerRevolution = 358.3);  // 名义参数
+    OdometryModel_c(float wheelRadiusMm = 16.36, float separationMm = 85.8, float countsPerRevolution = 358.3);  // E0 标定参数
 
     void setLeftWheelRadiusMm( float mm );
     void setRightWheelRadiusMm( float mm );

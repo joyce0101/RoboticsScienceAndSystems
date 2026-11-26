@@ -14,7 +14,7 @@ class Controller_c {
   final int PHASE_WAITING = 0, PHASE_RUNNING = 1, PHASE_SETTLING = 2, PHASE_DONE = 3;
   final int STRAIGHT_FWD = 0, TURN_LEFT = 1, TURN_RIGHT = 2, ARC_LEFT = 3, ARC_RIGHT = 4;
   int phase = PHASE_WAITING;
-  int motionStep = ARC_LEFT;
+  int motionStep = ARC_RIGHT;
   boolean routeStarted = false;
   long routeStartMs = 0, motionStartMs = 0, settlingStartMs = 0;
 
@@ -32,10 +32,10 @@ class Controller_c {
     signal = 0;
     // 每次试验只改这一行，选这次跑哪个动作
     // motionStep = STRAIGHT_FWD;
-    motionStep = TURN_LEFT;
+    // motionStep = TURN_LEFT;
     // motionStep = TURN_RIGHT;
     // motionStep = ARC_LEFT;
-    // motionStep = ARC_RIGHT;
+    motionStep = ARC_RIGHT;
     phase = PHASE_WAITING;
     routeStarted = false;
     routeStartMs = 0;
@@ -119,10 +119,14 @@ class Controller_c {
         runTimedPwm(robot, now, 40, -39, 1270);  // 180° 第1组 B=90 r=16
         break;
       case ARC_LEFT:
-        runTimedPwm(robot, now, 48, 68, 1730);
+        // runTimedPwm(robot, now, 48, 68, 1730);  // 第1组 B=90 r=16
+        // runTimedPwm(robot, now, 50, 70, 1610);  // 第2组 B=85.8 r=16.36
+        runTimedPwm(robot, now, 50, 70, 1660);     // 第3组 B=85.8 r=16.36 +阶跃响应（转角补偿）
         break;
       case ARC_RIGHT:
-        runTimedPwm(robot, now, 69, 47, 1730);
+        // runTimedPwm(robot, now, 69, 47, 1730);  // 第1组 B=90 r=16
+        // runTimedPwm(robot, now, 71, 49, 1610);  // 第2组 B=85.8 r=16.36
+        runTimedPwm(robot, now, 71, 49, 1690);     // 第3组 B=85.8 r=16.36 +阶跃响应（转角补偿）
         break;
     }
   }

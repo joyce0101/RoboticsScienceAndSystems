@@ -435,7 +435,7 @@ def print_step_compensation(res: dict, model: RobotModel, step_path: Path) -> No
 def build_parser() -> argparse.ArgumentParser:
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument(
-        "--r", type=float, default=16.0, help="有效轮径 r (mm)，默认 16.0"
+        "--r", type=float, default=16.36, help="有效轮径 r (mm)，默认 16.36"
     )
     common.add_argument(
         "--r-left", type=float, default=None, help="可选：左轮独立半径 (mm)"
@@ -444,7 +444,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--r-right", type=float, default=None, help="可选：右轮独立半径 (mm)"
     )
     common.add_argument(
-        "--B", type=float, default=90.0, help="有效轮距 B (mm)，默认 90.0"
+        "--B", type=float, default=85.8, help="有效轮距 B (mm)，默认 85.8"
     )
     common.add_argument(
         "--cpr", type=float, default=358.3, help="编码器每圈脉冲数，默认 358.3"

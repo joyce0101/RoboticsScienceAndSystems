@@ -82,8 +82,9 @@ class Simulator {
     ellipseMode(RADIUS);
     strokeJoin(ROUND);
     surfaceImage = loadSurfaceImage();
-    robot = new Robot_c(16.0, 90.00, surfaceImage,
-      surfaceOffsetX, surfaceOffsetY);
+    // robot = new Robot_c(16.0, 90.00, surfaceImage, surfaceOffsetX, surfaceOffsetY);  // 名义参数
+    robot = new Robot_c(16.36, 85.80, surfaceImage,
+      surfaceOffsetX, surfaceOffsetY);  // E0 标定参数
     controller = new Controller_c();
     controller.setSignal(1); // Sandbox starts immediately.
     lastSimulationUpdateMs = millis();

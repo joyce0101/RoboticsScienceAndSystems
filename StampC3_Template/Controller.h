@@ -80,7 +80,7 @@ class Controller_c {
 
     // 每个枚举值是试验中的一个具体动作。
     enum class MotionStep { STRAIGHT_FWD, TURN_LEFT, TURN_RIGHT, ARC_LEFT, ARC_RIGHT };
-    MotionStep motionStep = MotionStep::ARC_LEFT;
+    MotionStep motionStep = MotionStep::ARC_RIGHT;
     ExperimentPhase experimentPhase = ExperimentPhase::WAITING;
     uint32_t motionStartMs = 0;
     uint32_t settlingStartMs = 0;
