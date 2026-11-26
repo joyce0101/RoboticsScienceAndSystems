@@ -1,0 +1,11 @@
+run_id,csv_path,xf,yf,xb,yb
+E2_turn_left_180_run1,logs/E2_turn_left_180_run1.csv,2.5,-48.5,-3,48.5
+E2_turn_left_180_run2,logs/E2_turn_left_180_run2.csv,4,-47.5,-3.5,48
+E2_turn_left_180_run3,logs/E2_turn_left_180_run3.csv,2,-48.5,0,48
+E2_turn_left_180_run4,logs/E2_turn_left_180_run4.csv,4,-47,-3.5,48.5
+E2_turn_left_180_run5,logs/E2_turn_left_180_run5.csv,4.5,-48,-4.5,48.5
+E2_turn_right_180_run1,logs/E2_turn_right_180_run1.csv,-4.5,-46.5,1.5,49.5
+E2_turn_right_180_run2,logs/E2_turn_right_180_run2.csv,-4.5,-47,0.5,49.5
+E2_turn_right_180_run3,logs/E2_turn_right_180_run3.csv,-4,-46.5,1.5,50
+E2_turn_right_180_run4,logs/E2_turn_right_180_run4.csv,-4,-46.5,1.5,50
+E2_turn_right_180_run5,logs/E2_turn_right_180_run5.csv,-6.5,-46,3.5,49.5

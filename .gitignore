@@ -17,8 +17,6 @@
 
 # Local logs, generated output, and documentation
 /log/
-/logs/
-/output/
 /docs/
 /Path_Reproduction_Experiment_Design.md
 /SEMTM0043_42_IndividualTechReport/

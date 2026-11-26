@@ -1,0 +1,11 @@
+run_id,csv_path,xf,yf,xb,yb
+E2_turn_left_180_B85.8_r16.36_run1,logs/E2_turn_left_180_B85.8_r16.36_run1.csv,-7.5,-47,8.5,46.5
+E2_turn_left_180_B85.8_r16.36_run2,logs/E2_turn_left_180_B85.8_r16.36_run2.csv,-5.5,-48,6.5,47.5
+E2_turn_left_180_B85.8_r16.36_run3,logs/E2_turn_left_180_B85.8_r16.36_run3.csv,-8.5,-48.5,8.5,46.5
+E2_turn_left_180_B85.8_r16.36_run4,logs/E2_turn_left_180_B85.8_r16.36_run4.csv,-6.5,-47,8.5,47.5
+E2_turn_left_180_B85.8_r16.36_run5,logs/E2_turn_left_180_B85.8_r16.36_run5.csv,-8.5,-48.5,8.5,46.5
+E2_turn_right_180_B85.8_r16.36_run1,logs/E2_turn_right_180_B85.8_r16.36_run1.csv,8.5,-47.5,-12,47.5
+E2_turn_right_180_B85.8_r16.36_run2,logs/E2_turn_right_180_B85.8_r16.36_run2.csv,9,-47.5,-13.5,48
+E2_turn_right_180_B85.8_r16.36_run3,logs/E2_turn_right_180_B85.8_r16.36_run3.csv,5,-48.5,-10,47
+E2_turn_right_180_B85.8_r16.36_run4,logs/E2_turn_right_180_B85.8_r16.36_run4.csv,6.5,-46.5,-9.5,48.5
+E2_turn_right_180_B85.8_r16.36_run5,logs/E2_turn_right_180_B85.8_r16.36_run5.csv,6,-46.5,-10.5,48.5
