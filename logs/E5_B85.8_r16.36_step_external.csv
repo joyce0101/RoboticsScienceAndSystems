@@ -1,0 +1,6 @@
+run_id,csv_path,segment,xf,yf,xb,yb
+E5_B85.8_r16.36_step_run1,logs/E5_B85.8_r16.36_step_run1.csv,S1,190,246,196,156
+E5_B85.8_r16.36_step_run1,logs/E5_B85.8_r16.36_step_run1.csv,S2,237,198,144,200
+E5_B85.8_r16.36_step_run1,logs/E5_B85.8_r16.36_step_run1.csv,S3,370,-58,383,36
+E5_B85.8_r16.36_step_run1,logs/E5_B85.8_r16.36_step_run1.csv,S4,329,-3,426,-11
+E5_B85.8_r16.36_step_run1,logs/E5_B85.8_r16.36_step_run1.csv,S5,131,28,224.5,10

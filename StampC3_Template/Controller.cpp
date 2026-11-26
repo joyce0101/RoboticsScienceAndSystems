@@ -27,9 +27,11 @@ void Controller_c::reset() {
     // motionStep = MotionStep::TURN_LEFT;
     // motionStep = MotionStep::TURN_RIGHT;
     // motionStep = MotionStep::ARC_LEFT;
-    motionStep = MotionStep::ARC_RIGHT;
+    // motionStep = MotionStep::ARC_RIGHT;
+    motionStep = MotionStep::ROUTE_E5_DUAL_ARC;
     experimentPhase = ExperimentPhase::WAITING;
     motionStartMs = settlingStartMs = routeStartMs = 0;
+    routeSegmentIndex = 0;
     motionBaselineInitialized = false;
   }
 }
@@ -169,6 +171,37 @@ void Controller_c::updateMotion(Robot_c &robot, unsigned long now) {
       // runTimedPwm(robot, uint32_t(now), 71, 49, 1610);  // 第2组 B=85.8 r=16.36
       runTimedPwm(robot, uint32_t(now), 71, 49, 1690);     // 第3组 B=85.8 r=16.36 +阶跃响应（转角补偿）
       break;
+    case MotionStep::ROUTE_E5_DUAL_ARC: {
+      // E5 5段双弧拱门路径（包含左弧+右弧+原地转+直行，完全落在 X∈[0,400], Y∈[0,200]）：
+      // (0,0,0°) -> S1左弧 -> (200,200,+90°) -> S2右转 -> (200,200,0°)
+      //          -> S3右弧 -> (400,0,-90°)   -> S4右转 -> (400,0,-180°) -> S5直行200 -> (200,0,-180°)
+      // --- 第1组：名义参数 B=90, r=16 ---
+      // static const TimedSegment kRouteDualArc[] = {
+      //   { 48,  68, 1730 },  // S1 左弧 R=200, +90°
+      //   { 40, -39,  640 },  // S2 原地右转 -90°
+      //   { 69,  47, 1730 },  // S3 右弧 R=200, -90°
+      //   { 40, -39,  640 },  // S4 原地右转 -90°
+      //   { 58,  57, 1110 },  // S5 直行 200 mm
+      // };
+      // --- 第2组：E0 几何校准 B=85.8, r=16.36 ---
+      // static const TimedSegment kRouteDualArc[] = {
+      //   { 50,  70, 1610 },  // S1 左弧 R=200, +90°
+      //   { 40, -39,  590 },  // S2 原地右转 -90°
+      //   { 71,  49, 1610 },  // S3 右弧 R=200, -90°
+      //   { 40, -39,  590 },  // S4 原地右转 -90°
+      //   { 57,  56, 1110 },  // S5 直行 200 mm
+      // };
+      // --- 第3组：E0 几何校准 + 阶跃响应补偿（默认启用，段间停顿 3000 ms）---
+      static const TimedSegment kRouteDualArc[] = {
+        { 50,  70, 1660 },  // S1 左弧 R=200, +90° (+46.6 ms 转角补偿)
+        { 40, -39,  650 },  // S2 原地右转 -90° (+63 ms 转角补偿)
+        { 71,  49, 1690 },  // S3 右弧 R=200, -90° (+79.4 ms 转角补偿)
+        { 40, -39,  650 },  // S4 原地右转 -90°
+        { 57,  56, 1170 },  // S5 直行 200 mm (+63 ms 路程补偿)
+      };
+      runRouteSequence(robot, uint32_t(now), kRouteDualArc, 5, 3000, 2000);
+      break;
+    }
   }
 }
 
@@ -215,7 +248,8 @@ void Controller_c::measureWheelSpeed(Robot_c &robot, unsigned long now) {
 }
 
 Controller_c::ExperimentPhase Controller_c::runTimedPwm(
-    Robot_c& robot, uint32_t nowMs, int16_t leftPwm, int16_t rightPwm, uint32_t durationMs) {
+    Robot_c& robot, uint32_t nowMs, int16_t leftPwm, int16_t rightPwm,
+    uint32_t durationMs, uint32_t settleMs) {
   // 刚开始：记下开始时间
   if (experimentPhase == ExperimentPhase::WAITING) {
     motionStartMs = nowMs;
@@ -230,12 +264,33 @@ Controller_c::ExperimentPhase Controller_c::runTimedPwm(
       robot.setMotorPWM(leftPwm, rightPwm);
     }
   }
-  // 停车后继续记录2000 ms，看滑行
+  // 停车后继续记录settleMs（单动作默认2000 ms，组合路径段间停顿3000 ms供打点）
   if (experimentPhase == ExperimentPhase::SETTLING) {
     robot.setMotorPWM(0, 0);
-    if (nowMs - settlingStartMs >= 2000) {
+    if (nowMs - settlingStartMs >= settleMs) {
       experimentPhase = ExperimentPhase::DONE;
     }
   }
   return experimentPhase;
+}
+
+void Controller_c::runRouteSequence(
+    Robot_c& robot, uint32_t nowMs,
+    const TimedSegment* segments, uint8_t segmentCount,
+    uint32_t pauseMs, uint32_t finalSettleMs) {
+  if (routeSegmentIndex >= segmentCount) {
+    experimentPhase = ExperimentPhase::DONE;
+    robot.setMotorPWM(0, 0);
+    return;
+  }
+  const TimedSegment& seg = segments[routeSegmentIndex];
+  const bool isLast = (routeSegmentIndex + 1 >= segmentCount);
+  const uint32_t settleMs = isLast ? finalSettleMs : pauseMs;
+  if (runTimedPwm(robot, nowMs, seg.leftPwm, seg.rightPwm, seg.durationMs, settleMs)
+      == ExperimentPhase::DONE) {
+    if (!isLast) {
+      routeSegmentIndex++;
+      experimentPhase = ExperimentPhase::WAITING;
+    }
+  }
 }

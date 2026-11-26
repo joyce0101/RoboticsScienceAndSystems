@@ -69,23 +69,38 @@ class Controller_c {
   protected:
     /** 每周期调用当前动作方法，跑完后保持停车。 */
     virtual void updateMotion(Robot_c &robot, unsigned long now);
-    // 按给定左右PWM跑durationMs，再停车记录2000 ms；直线、原地转和圆弧共用。
+    // 按给定左右PWM跑durationMs，再停车记录settleMs；直线、原地转、圆弧和组合路径共用。
     ExperimentPhase runTimedPwm(Robot_c& robot, uint32_t nowMs,
-                                int16_t leftPwm, int16_t rightPwm, uint32_t durationMs);
+                                int16_t leftPwm, int16_t rightPwm,
+                                uint32_t durationMs, uint32_t settleMs = 2000);
 
   private:
+    struct TimedSegment {
+      int16_t leftPwm;
+      int16_t rightPwm;
+      uint32_t durationMs;
+    };
+
     uint8_t signal;
     TaskTimer_c update_timer;
     TaskTimer_c telemetry_timer;
 
-    // 每个枚举值是试验中的一个具体动作。
-    enum class MotionStep { STRAIGHT_FWD, TURN_LEFT, TURN_RIGHT, ARC_LEFT, ARC_RIGHT };
-    MotionStep motionStep = MotionStep::ARC_RIGHT;
+    // 每个枚举值是试验中的一个具体动作（含 E5 5段双弧拱门组合路径）。
+    enum class MotionStep {
+      STRAIGHT_FWD, TURN_LEFT, TURN_RIGHT, ARC_LEFT, ARC_RIGHT,
+      ROUTE_E5_DUAL_ARC
+    };
+    MotionStep motionStep = MotionStep::ROUTE_E5_DUAL_ARC;
     ExperimentPhase experimentPhase = ExperimentPhase::WAITING;
     uint32_t motionStartMs = 0;
     uint32_t settlingStartMs = 0;
     uint32_t routeStartMs = 0;
+    uint8_t routeSegmentIndex = 0;
     bool motionBaselineInitialized = false;
+
+    void runRouteSequence(Robot_c& robot, uint32_t nowMs,
+                          const TimedSegment* segments, uint8_t segmentCount,
+                          uint32_t pauseMs = 3000, uint32_t finalSettleMs = 2000);
 
     void measureWheelSpeed(Robot_c &robot, unsigned long now);
 
