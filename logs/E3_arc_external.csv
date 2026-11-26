@@ -1,0 +1,6 @@
+run_id,csv_path,xf,yf,xb,yb
+E3_arc_left_run1,logs/E3_arc_left_run1.csv,180,252,190,157
+E3_arc_left_run2,logs/E3_arc_left_run2.csv,175,258,186,163
+E3_arc_left_run3,logs/E3_arc_left_run3.csv,183,252.5,192,158
+E3_arc_left_run4,logs/E3_arc_left_run4.csv,181,253,190,159
+E3_arc_left_run5,logs/E3_arc_left_run5.csv,175.5,256,187,162

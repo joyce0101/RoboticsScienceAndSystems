@@ -1,0 +1,6 @@
+run_id,csv_path,xf,yf,xb,yb
+E3_arc_right_run1,logs/E3_arc_ringht_run1.csv,177,-55,189,36.5
+E3_arc_right_run2,logs/E3_arc_ringht_run2.csv,178.5,-56,192,35
+E3_arc_right_run3,logs/E3_arc_ringht_run3.csv,183,-54.5,193,39
+E3_arc_right_run4,logs/E3_arc_ringht_run4.csv,178,-58.5,189,35
+E3_arc_right_run5,logs/E3_arc_ringht_run5.csv,178.5,-58,190,35
